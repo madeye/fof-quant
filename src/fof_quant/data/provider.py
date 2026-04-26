@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import date
 from typing import Any, Protocol
 
@@ -20,7 +21,7 @@ class DataTable(BaseModel):
     dataset: str = Field(min_length=1)
     rows: list[JsonRecord]
 
-    def validate_required_fields(self, required_fields: set[str]) -> None:
+    def validate_required_fields(self, required_fields: Collection[str]) -> None:
         missing_by_row: list[str] = []
         for index, row in enumerate(self.rows):
             missing = sorted(field for field in required_fields if field not in row)

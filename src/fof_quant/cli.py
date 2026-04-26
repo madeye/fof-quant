@@ -5,6 +5,9 @@ import typer
 
 from fof_quant.config import AppConfig, load_config
 from fof_quant.data.cache import CacheStore
+from fof_quant.data.provider import DataRequest
+from fof_quant.data.refresh import DEFAULT_DATASETS, refresh_datasets
+from fof_quant.data.tushare import build_tushare_provider
 
 app = typer.Typer(help="ETF FOF research CLI.")
 config_app = typer.Typer(help="Configuration commands.")
@@ -67,4 +70,17 @@ def refresh_data(
     if dry_run:
         typer.echo(f"Data refresh dry run OK: cache_dir={loaded.data.cache_dir}")
         return
-    raise typer.BadParameter("live Tushare refresh is not implemented yet; use --dry-run")
+    requests = [
+        DataRequest(
+            dataset=dataset,
+            start_date=loaded.data.start_date,
+            end_date=loaded.data.end_date,
+        )
+        for dataset in DEFAULT_DATASETS
+    ]
+    metadata = refresh_datasets(
+        provider=build_tushare_provider(),
+        cache=cache,
+        requests=requests,
+    )
+    typer.echo(f"Refreshed {len(metadata)} datasets into {loaded.data.cache_dir}")
