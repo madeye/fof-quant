@@ -3,6 +3,8 @@ from typing import Annotated
 
 import typer
 
+from fof_quant.allocation.artifacts import write_allocation, write_scores
+from fof_quant.allocation.engine import AllocationEngine
 from fof_quant.config import AppConfig, load_config
 from fof_quant.data.cache import CacheStore
 from fof_quant.data.provider import DataRequest
@@ -11,14 +13,17 @@ from fof_quant.data.tushare import build_tushare_provider
 from fof_quant.factors.artifacts import write_factor_snapshots
 from fof_quant.factors.engine import FactorEngine, FactorInput
 from fof_quant.factors.exposure import ExposureResolver
+from fof_quant.scoring.engine import ScoringEngine
 
 app = typer.Typer(help="ETF FOF research CLI.")
 config_app = typer.Typer(help="Configuration commands.")
 data_app = typer.Typer(help="Data commands.")
 factors_app = typer.Typer(help="Factor commands.")
+score_app = typer.Typer(help="Scoring commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
+app.add_typer(score_app, name="score")
 
 
 @app.callback()
@@ -114,3 +119,32 @@ def build_factors(
     )
     path = write_factor_snapshots(snapshots, loaded.reports.output_dir, loaded.data.start_date)
     typer.echo(f"Wrote factor snapshots: {path}")
+
+
+@score_app.command("run")
+def run_scoring(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/example.yaml"),
+) -> None:
+    """Run ETF scoring and allocation."""
+    loaded = load_config(config)
+    scores = ScoringEngine(loaded.factors.weights).score([])
+    plan = AllocationEngine(
+        min_holdings=loaded.strategy.min_holdings,
+        max_weight=loaded.strategy.max_weight,
+        cash_buffer=loaded.strategy.cash_buffer,
+    ).allocate(scores)
+    score_path = write_scores(scores, loaded.reports.output_dir)
+    allocation_path = write_allocation(plan, loaded.reports.output_dir)
+    typer.echo(f"Wrote scores: {score_path}")
+    typer.echo(f"Wrote allocation: {allocation_path}")
