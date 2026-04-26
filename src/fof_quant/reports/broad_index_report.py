@@ -88,7 +88,7 @@ def write_signal_report(
         ]
     excel_path = output_dir / f"{stem}.xlsx"
     html_path = output_dir / f"{stem}.html"
-    write_xlsx(excel_path, sheets)
+    write_xlsx(excel_path, _format_sheets_for_excel(sheets))
     html_path.write_text(_signal_html(sheets, llm_narrative), encoding="utf-8")
     return ReportBundle(excel_path=excel_path, html_path=html_path)
 
@@ -126,7 +126,7 @@ def write_backtest_report(
         ]
     excel_path = output_dir / f"{stem}.xlsx"
     html_path = output_dir / f"{stem}.html"
-    write_xlsx(excel_path, sheets)
+    write_xlsx(excel_path, _format_sheets_for_excel(sheets))
     html_path.write_text(_backtest_html(sheets, llm_narrative), encoding="utf-8")
     return ReportBundle(excel_path=excel_path, html_path=html_path)
 
@@ -164,7 +164,7 @@ def _sleeve_picks_rows(analysis: BroadIndexAnalysis) -> SheetRows:
             "管理人",
             "总费率%",
             "上市日期",
-            "60日均成交额 (元)",
+            "60日均成交额 (亿元)",
             "跟踪误差% (252日)",
             "信息比率 (252日)",
             "全收益基准?",
@@ -185,7 +185,7 @@ def _sleeve_picks_rows(analysis: BroadIndexAnalysis) -> SheetRows:
                 m.management,
                 m.fee_total_pct,
                 m.list_date.isoformat(),
-                m.avg_daily_amount_60d,
+                m.avg_daily_amount_60d / 1e8,
                 m.tracking_error_252d_pct if m.tracking_error_252d_pct is not None else "",
                 m.info_ratio_252d if m.info_ratio_252d is not None else "",
                 "是" if m.is_total_return_benchmark else "否",
@@ -428,12 +428,56 @@ def _wrap_html(*, title: str, sections: list[tuple[str, str]], narrative: str) -
 def _cell_str(value: object) -> str:
     if value is None:
         return ""
+    if isinstance(value, bool):
+        return "是" if value else "否"
     if isinstance(value, float):
-        return f"{value:.6g}"
+        return _format_float(value)
     return str(value)
+
+
+def _format_float(value: float) -> str:
+    if value != value or value in (float("inf"), float("-inf")):
+        return str(value)
+    if value == 0:
+        return "0"
+    # Pick precision based on magnitude — never scientific notation.
+    abs_v = abs(value)
+    if abs_v >= 1000:
+        text = f"{value:,.2f}"
+    elif abs_v >= 1:
+        text = f"{value:,.4f}"
+    else:
+        text = f"{value:.6f}"
+    # Trim trailing zeros (but keep at least 2 decimals when present)
+    if "." in text:
+        text = text.rstrip("0").rstrip(".") or "0"
+    return text
 
 
 def _to_cell(value: object) -> str | int | float | bool | None:
     if value is None or isinstance(value, str | int | float | bool):
         return value
     return str(value)
+
+
+def _format_sheets_for_excel(sheets: dict[str, SheetRows]) -> dict[str, SheetRows]:
+    """Pre-format floats to formatted strings before they reach the xlsx writer.
+    Excel's General number format falls to scientific notation for values below
+    1e-4 (and above ~1e11), which we never want in a research report. By
+    rendering floats as already-formatted strings we sidestep that entirely;
+    cells become text but the formatting matches the HTML view exactly."""
+    formatted: dict[str, SheetRows] = {}
+    for name, rows in sheets.items():
+        formatted[name] = [
+            [_excel_cell(value) for value in row]
+            for row in rows
+        ]
+    return formatted
+
+
+def _excel_cell(value: str | int | float | bool | None) -> str | int | float | bool | None:
+    if isinstance(value, bool):
+        return "是" if value else "否"
+    if isinstance(value, float):
+        return _format_float(value)
+    return value
