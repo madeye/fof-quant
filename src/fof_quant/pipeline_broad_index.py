@@ -25,8 +25,15 @@ from fof_quant.analysis.broad_index_allocation import (
 )
 from fof_quant.backtest_broad_index import BroadIndexBacktest, run_broad_index_backtest
 from fof_quant.data.broad_index import BroadIndexFetchResult, load_broad_index
+from fof_quant.env import llm_env
 from fof_quant.portfolio.holdings import CurrentPortfolio, load_holdings
 from fof_quant.portfolio.rebalance import RebalanceLine, compute_rebalance
+from fof_quant.reports.broad_index_report import (
+    ReportBundle,
+    write_backtest_report,
+    write_signal_report,
+)
+from fof_quant.reports.llm import explain_broad_index
 
 
 @dataclass(frozen=True)
@@ -35,6 +42,8 @@ class BroadIndexRunArtifacts:
     rebalance_lines: list[RebalanceLine]
     total_aum_cny: float
     manifest_path: Path
+    report: ReportBundle | None = None
+    llm_narrative: str = ""
 
 
 def run_broad_index_pipeline(
@@ -49,6 +58,9 @@ def run_broad_index_pipeline(
     abs_band_pp: float = 5.0,
     rel_band_pct: float = 25.0,
     force_rebalance: bool = False,
+    write_report: bool = True,
+    explain_with_llm: bool = False,
+    config_summary: dict[str, object] | None = None,
 ) -> BroadIndexRunArtifacts:
     weights = sleeve_weights or DEFAULT_SLEEVE_WEIGHTS
     fetched = load_broad_index(cache_dir)
@@ -78,21 +90,38 @@ def run_broad_index_pipeline(
         force=force_rebalance,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest = _manifest_payload(analysis, target_plan, lines, aum, weights)
     manifest_path = output_dir / f"broad_index_rebalance_{analysis.as_of:%Y%m%d}.json"
     manifest_path.write_text(
-        json.dumps(
-            _manifest_payload(analysis, target_plan, lines, aum, weights),
-            ensure_ascii=False,
-            indent=2,
-            default=_json_default,
-        ),
+        json.dumps(manifest, ensure_ascii=False, indent=2, default=_json_default),
         encoding="utf-8",
+    )
+    narrative = (
+        explain_broad_index(enabled=True, env=llm_env(), payload=manifest)
+        if explain_with_llm
+        else ""
+    )
+    report = (
+        write_signal_report(
+            output_dir=output_dir,
+            config_summary=config_summary or {},
+            analysis=analysis,
+            target_plan=target_plan,
+            rebalance_lines=lines,
+            total_aum_cny=aum,
+            sleeve_weights=weights,
+            llm_narrative=narrative,
+        )
+        if write_report
+        else None
     )
     return BroadIndexRunArtifacts(
         target_plan=target_plan,
         rebalance_lines=lines,
         total_aum_cny=aum,
         manifest_path=manifest_path,
+        report=report,
+        llm_narrative=narrative,
     )
 
 
@@ -164,7 +193,10 @@ def run_broad_index_backtest_pipeline(
     transaction_cost_bps: float = 2.0,
     slippage_bps: float = 1.0,
     benchmark_label: str = "沪深300",
-) -> tuple[BroadIndexBacktest, Path]:
+    write_report: bool = True,
+    explain_with_llm: bool = False,
+    config_summary: dict[str, object] | None = None,
+) -> tuple[BroadIndexBacktest, Path, ReportBundle | None, str]:
     fetched = load_broad_index(cache_dir)
     backtest = run_broad_index_backtest(
         fetched,
@@ -181,17 +213,29 @@ def run_broad_index_backtest_pipeline(
         benchmark_label=benchmark_label,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
+    manifest = _backtest_manifest(backtest)
     manifest_path = output_dir / f"broad_index_backtest_{end_date:%Y%m%d}.json"
     manifest_path.write_text(
-        json.dumps(
-            _backtest_manifest(backtest),
-            ensure_ascii=False,
-            indent=2,
-            default=_json_default,
-        ),
+        json.dumps(manifest, ensure_ascii=False, indent=2, default=_json_default),
         encoding="utf-8",
     )
-    return backtest, manifest_path
+    narrative = (
+        explain_broad_index(enabled=True, env=llm_env(), payload=manifest)
+        if explain_with_llm
+        else ""
+    )
+    report = None
+    if write_report:
+        analysis = analyze_broad_index(fetched)
+        report = write_backtest_report(
+            output_dir=output_dir,
+            config_summary=config_summary or {},
+            analysis=analysis,
+            backtest=backtest,
+            sleeve_weights=sleeve_weights or DEFAULT_SLEEVE_WEIGHTS,
+            llm_narrative=narrative,
+        )
+    return backtest, manifest_path, report, narrative
 
 
 def render_backtest_summary(backtest: BroadIndexBacktest) -> str:
