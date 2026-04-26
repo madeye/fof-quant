@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from fof_quant.analysis.broad_index import analyze as analyze_broad_index
+from fof_quant.analysis.broad_index import (
+    BroadIndexAnalysis,
+)
+from fof_quant.analysis.broad_index import (
+    analyze as analyze_broad_index,
+)
 from fof_quant.analysis.broad_index_allocation import (
     DEFAULT_SLEEVE_WEIGHTS,
     build_target_plan,
@@ -58,6 +64,7 @@ def run_broad_index_backtest(
     rebalance_frequency: str = "monthly",
     benchmark_label: str = "沪深300",
     semiannual_force_months: tuple[int, int] = (1, 7),
+    pit_analysis_provider: Callable[[date], BroadIndexAnalysis | None] | None = None,
 ) -> BroadIndexBacktest:
     weights = sleeve_weights or DEFAULT_SLEEVE_WEIGHTS
     cost_rate = (transaction_cost_bps + slippage_bps) / 10_000
@@ -100,10 +107,14 @@ def run_broad_index_backtest(
             month_force = d.month in semiannual_force_months and _is_first_rebal_in_month(
                 d, rebal_days
             )
+            pit_analysis = (
+                pit_analysis_provider(d) if pit_analysis_provider is not None else None
+            )
+            if pit_analysis is None:
+                pit_analysis = _default_pit_analysis(fetched, pit_universe, d)
             event = _rebalance(
                 d=d,
-                fetched=fetched,
-                pit_universe=pit_universe,
+                pit_analysis=pit_analysis,
                 weights=weights,
                 cash_buffer=cash_buffer,
                 max_weight=max_weight,
@@ -142,11 +153,19 @@ def run_broad_index_backtest(
 # ----- internals -----
 
 
+def _default_pit_analysis(
+    fetched: BroadIndexFetchResult,
+    pit_universe: list[dict[str, Any]],
+    d: date,
+) -> BroadIndexAnalysis:
+    pit_fetched = _slice_pit(fetched, pit_universe, d)
+    return analyze_broad_index(pit_fetched, as_of=d)
+
+
 def _rebalance(
     *,
     d: date,
-    fetched: BroadIndexFetchResult,
-    pit_universe: list[dict[str, Any]],
+    pit_analysis: BroadIndexAnalysis,
     weights: dict[str, float],
     cash_buffer: float,
     max_weight: float,
@@ -157,8 +176,6 @@ def _rebalance(
     cost_rate: float,
     force: bool,
 ) -> RebalanceEvent | None:
-    pit_fetched = _slice_pit(fetched, pit_universe, d)
-    pit_analysis = analyze_broad_index(pit_fetched, as_of=d)
     target_plan = build_target_plan(
         pit_analysis,
         sleeve_weights=weights,
@@ -332,9 +349,28 @@ def _parse_date(text: str) -> date:
     return datetime.strptime(text, "%Y%m%d").date()
 
 
+def precompute_pit_cache(
+    fetched: BroadIndexFetchResult,
+    *,
+    start_date: date,
+    end_date: date,
+    rebalance_frequency: str = "monthly",
+) -> dict[date, BroadIndexAnalysis]:
+    """Compute the PIT BroadIndexAnalysis for every rebalance date once.
+    Sweeps that vary scheme/band but share the same data window can pass the
+    result back as `pit_analysis_provider=cache.__getitem__`."""
+    days = _trading_days(fetched, start_date, end_date)
+    if not days:
+        return {}
+    rebal_days = rebalance_dates(days, rebalance_frequency)  # type: ignore[arg-type]
+    pit_universe = list(fetched.universe.rows)
+    return {d: _default_pit_analysis(fetched, pit_universe, d) for d in rebal_days}
+
+
 __all__ = [
     "BroadIndexBacktest",
     "CurvePoint",
     "RebalanceEvent",
+    "precompute_pit_cache",
     "run_broad_index_backtest",
 ]
