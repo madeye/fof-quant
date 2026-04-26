@@ -31,6 +31,7 @@
 - [ ] Add cache metadata with provider, fetch time, parameters, and schema version.
 - [ ] Validate missing fields, duplicate keys, stale data, and date coverage.
 - [ ] Add fixture datasets for offline tests.
+- [ ] Add and maintain small real Tushare snapshot fixtures for offline provider normalization tests.
 
 ## Universe and Eligibility
 

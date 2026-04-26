@@ -86,3 +86,22 @@ def test_backtest_run_command(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert (report_dir / "backtest.json").exists()
+
+
+def test_report_build_command(tmp_path: Path) -> None:
+    example_config = Path("configs/example.yaml").read_text(encoding="utf-8")
+    config_path = tmp_path / "config.yaml"
+    report_dir = tmp_path / "reports"
+    config_path.write_text(
+        example_config.replace("output_dir: reports", f"output_dir: {report_dir}"),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["report", "build", "--config", str(config_path)],
+    )
+
+    assert result.exit_code == 0
+    assert (report_dir / "fof_quant_report.xlsx").exists()
+    assert (report_dir / "fof_quant_report.html").exists()
