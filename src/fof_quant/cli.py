@@ -470,12 +470,20 @@ def run_broad_index_command(
             ),
         ),
     ] = False,
+    explain: Annotated[
+        bool,
+        typer.Option(
+            "--explain/--no-explain",
+            help="Append a Chinese LLM narrative section (uses LLM_* from .env).",
+        ),
+    ] = False,
 ) -> None:
     """Generate the broad-index FOF rebalance signal, or run the strategy as a backtest."""
     loaded = load_config(config)
+    config_summary = _config_summary(loaded)
     if backtest:
         end_date = loaded.data.end_date or date.today()
-        result, manifest_path = run_broad_index_backtest_pipeline(
+        result, manifest_path, report, _narrative = run_broad_index_backtest_pipeline(
             cache_dir=loaded.data.cache_dir,
             output_dir=loaded.reports.output_dir,
             start_date=loaded.data.start_date,
@@ -487,9 +495,14 @@ def run_broad_index_command(
             rel_band_pct=rel_band_pct,
             transaction_cost_bps=loaded.backtest.transaction_cost_bps,
             slippage_bps=loaded.backtest.slippage_bps,
+            explain_with_llm=explain or loaded.reports.llm_explanations,
+            config_summary=config_summary,
         )
         typer.echo(render_backtest_summary(result))
         typer.echo(f"\nManifest: {manifest_path}")
+        if report is not None:
+            typer.echo(f"Excel:    {report.excel_path}")
+            typer.echo(f"HTML:     {report.html_path}")
         return
     artifacts = run_broad_index_pipeline(
         cache_dir=loaded.data.cache_dir,
@@ -501,6 +514,29 @@ def run_broad_index_command(
         abs_band_pp=abs_band_pp,
         rel_band_pct=rel_band_pct,
         force_rebalance=force,
+        explain_with_llm=explain or loaded.reports.llm_explanations,
+        config_summary=config_summary,
     )
     typer.echo(render_rebalance_table(artifacts.rebalance_lines, artifacts.total_aum_cny))
     typer.echo(f"\nManifest: {artifacts.manifest_path}")
+    if artifacts.report is not None:
+        typer.echo(f"Excel:    {artifacts.report.excel_path}")
+        typer.echo(f"HTML:     {artifacts.report.html_path}")
+    if artifacts.llm_narrative:
+        typer.echo("\nLLM narrative:\n" + artifacts.llm_narrative)
+
+
+def _config_summary(loaded: AppConfig) -> dict[str, object]:
+    return {
+        "project": loaded.project.name,
+        "provider": loaded.data.provider,
+        "start_date": loaded.data.start_date.isoformat(),
+        "end_date": loaded.data.end_date.isoformat() if loaded.data.end_date else "",
+        "benchmark": loaded.strategy.benchmark,
+        "cash_buffer": loaded.strategy.cash_buffer,
+        "max_weight": loaded.strategy.max_weight,
+        "min_holdings": loaded.strategy.min_holdings,
+        "transaction_cost_bps": loaded.backtest.transaction_cost_bps,
+        "slippage_bps": loaded.backtest.slippage_bps,
+        "llm_explanations": loaded.reports.llm_explanations,
+    }
