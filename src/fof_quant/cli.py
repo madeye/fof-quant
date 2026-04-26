@@ -23,12 +23,14 @@ config_app = typer.Typer(help="Configuration commands.")
 data_app = typer.Typer(help="Data commands.")
 factors_app = typer.Typer(help="Factor commands.")
 score_app = typer.Typer(help="Scoring commands.")
+allocate_app = typer.Typer(help="Allocation commands.")
 backtest_app = typer.Typer(help="Backtest commands.")
 report_app = typer.Typer(help="Report commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
 app.add_typer(score_app, name="score")
+app.add_typer(allocate_app, name="allocate")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(report_app, name="report")
 
@@ -154,6 +156,32 @@ def run_scoring(
     score_path = write_scores(scores, loaded.reports.output_dir)
     allocation_path = write_allocation(plan, loaded.reports.output_dir)
     typer.echo(f"Wrote scores: {score_path}")
+    typer.echo(f"Wrote allocation: {allocation_path}")
+
+
+@allocate_app.command("run")
+def run_allocation(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/example.yaml"),
+) -> None:
+    """Run allocation from prepared score artifacts."""
+    loaded = load_config(config)
+    plan = AllocationEngine(
+        min_holdings=loaded.strategy.min_holdings,
+        max_weight=loaded.strategy.max_weight,
+        cash_buffer=loaded.strategy.cash_buffer,
+    ).allocate([])
+    allocation_path = write_allocation(plan, loaded.reports.output_dir)
     typer.echo(f"Wrote allocation: {allocation_path}")
 
 
