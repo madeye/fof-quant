@@ -11,6 +11,14 @@ from fof_quant.analysis.broad_index import render_correlation, render_picks
 from fof_quant.analysis.broad_index import write_csv as write_broad_csv
 from fof_quant.analysis.csi300 import analyze as analyze_csi300
 from fof_quant.analysis.csi300 import render_table, write_csv
+from fof_quant.analysis.sweep import (
+    QUICK_BANDS_PP,
+    QUICK_SCHEMES,
+    SCHEMES,
+    render_sweep_table,
+    run_sweep,
+    write_sweep_csv,
+)
 from fof_quant.backtest.artifacts import write_backtest_result
 from fof_quant.backtest.engine import BacktestEngine
 from fof_quant.config import AppConfig, load_config
@@ -359,6 +367,57 @@ def analyze_broad_index_command(
     typer.echo(render_picks(analysis))
     typer.echo("\nBenchmark return correlation (252d):")
     typer.echo(render_correlation(analysis))
+    typer.echo(f"\nWrote CSV: {csv_path}")
+
+
+@analyze_app.command("sweep")
+def analyze_sweep_command(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/broad_index.yaml"),
+    quick: Annotated[
+        bool,
+        typer.Option(
+            "--quick/--full",
+            help="Quick = 3 schemes × 3 bands; Full = 7 schemes × 6 bands.",
+        ),
+    ] = False,
+    top: Annotated[
+        int,
+        typer.Option("--top", help="Show only the top N rows in the console."),
+    ] = 10,
+) -> None:
+    """Sweep sleeve weight schemes × rebalance bands across cached history."""
+    loaded = load_config(config)
+    end_date = loaded.data.end_date or date.today()
+    fetched = load_broad_index(loaded.data.cache_dir)
+    schemes = (
+        {name: SCHEMES[name] for name in QUICK_SCHEMES} if quick else SCHEMES
+    )
+    bands = QUICK_BANDS_PP if quick else None
+    rows, benchmark, _ = run_sweep(
+        fetched,
+        start_date=loaded.data.start_date,
+        end_date=end_date,
+        initial_cash=loaded.backtest.initial_cash,
+        schemes=schemes,
+        bands_pp=bands or (1.0, 2.0, 3.0, 5.0, 7.0, 10.0),
+        cash_buffer=loaded.strategy.cash_buffer,
+        max_weight=loaded.strategy.max_weight,
+        transaction_cost_bps=loaded.backtest.transaction_cost_bps,
+        slippage_bps=loaded.backtest.slippage_bps,
+    )
+    csv_path = write_sweep_csv(rows, loaded.reports.output_dir, end_date=end_date)
+    typer.echo(render_sweep_table(rows, benchmark, top=top))
     typer.echo(f"\nWrote CSV: {csv_path}")
 
 
