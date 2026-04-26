@@ -45,3 +45,4 @@ def test_backtest_engine_applies_trade_costs() -> None:
     ).run(prices, allocation)
 
     assert result.curve[0].nav == pytest.approx(0.999)
+    assert result.metrics.tracking_error == 0.0

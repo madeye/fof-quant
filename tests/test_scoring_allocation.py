@@ -20,6 +20,19 @@ def test_scoring_engine_normalizes_and_scores() -> None:
     assert scores[1].score == pytest.approx(0.0)
 
 
+def test_scoring_engine_winsorizes_outliers() -> None:
+    snapshots = [
+        FactorSnapshot("A", date(2024, 1, 31), {"momentum": 1.0}, {}, 1, "fund"),
+        FactorSnapshot("B", date(2024, 1, 31), {"momentum": 2.0}, {}, 1, "fund"),
+        FactorSnapshot("C", date(2024, 1, 31), {"momentum": 100.0}, {}, 1, "fund"),
+    ]
+
+    scores = ScoringEngine({"momentum": 1.0}, winsorize_pct=0.5).score(snapshots)
+
+    assert scores[0].etf_code == "A"
+    assert all(row.score == 0.0 for row in scores)
+
+
 def test_allocation_engine_respects_basic_constraints() -> None:
     snapshots = [
         FactorSnapshot("A", date(2024, 1, 31), {"momentum": 3.0}, {}, 1, "fund"),
