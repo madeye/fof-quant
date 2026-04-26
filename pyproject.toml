@@ -5,6 +5,7 @@ description = "ETF FOF research system for broad-index fund enhancement workflow
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "madeye" }]
+license = { file = "LICENSE" }
 dependencies = [
     "pandas>=2.2",
     "pydantic>=2.11",
