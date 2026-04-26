@@ -21,6 +21,43 @@ class ReportBundle:
     html_path: Path
 
 
+_CONFIG_LABELS: dict[str, str] = {
+    "project": "项目名称",
+    "provider": "数据提供方",
+    "start_date": "数据起始",
+    "end_date": "数据截止",
+    "benchmark": "基准指数",
+    "cash_buffer": "现金缓冲",
+    "max_weight": "单 Sleeve 最大权重",
+    "min_holdings": "最小持仓数",
+    "transaction_cost_bps": "佣金 (bps)",
+    "slippage_bps": "滑点 (bps)",
+    "llm_explanations": "启用 LLM 解读",
+    "as_of": "数据日期",
+    "total_aum_cny": "账户总资产 (元)",
+    "backtest_start": "回测起始",
+    "backtest_end": "回测结束",
+    "rebalance_count": "调仓次数",
+    "final_nav": "期末净值",
+}
+
+_CONSTRAINT_LABELS: dict[str, str] = {
+    "min_holdings": "最小持仓数",
+    "max_weight": "单 Sleeve 上限",
+    "cash_buffer": "现金缓冲",
+    "all_sleeves_filled": "所有 Sleeve 均有候选",
+}
+
+_ACTION_LABELS: dict[str, str] = {
+    "open": "建仓",
+    "close": "清仓",
+    "buy": "加仓",
+    "sell": "减仓",
+    "hold": "持有",
+    "initial": "初始建仓",
+}
+
+
 def write_signal_report(
     *,
     output_dir: Path,
@@ -35,18 +72,18 @@ def write_signal_report(
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = f"broad_index_signal_{analysis.as_of:%Y%m%d}"
     sheets: dict[str, SheetRows] = {
-        "Summary": _summary_rows(
+        "概览": _summary_rows(
             config_summary,
             sleeve_weights,
-            extra=[("as_of", analysis.as_of.isoformat()), ("total_aum_cny", total_aum_cny)],
+            extra=[("数据日期", analysis.as_of.isoformat()), ("账户总资产 (元)", total_aum_cny)],
         ),
-        "Sleeve picks": _sleeve_picks_rows(analysis),
-        "Target plan": _target_plan_rows(target_plan),
-        "Rebalance": _rebalance_rows(rebalance_lines),
+        "Sleeve 选品": _sleeve_picks_rows(analysis),
+        "目标配置": _target_plan_rows(target_plan),
+        "调仓建议": _rebalance_rows(rebalance_lines),
     }
     if llm_narrative:
-        sheets["Narrative"] = [
-            ["LLM narrative (assistance only — not a calculation input)"],
+        sheets["LLM 解读"] = [
+            ["LLM 解读 (仅作辅助说明，不参与任何计算)"],
             [llm_narrative],
         ]
     excel_path = output_dir / f"{stem}.xlsx"
@@ -70,21 +107,21 @@ def write_backtest_report(
     stem = f"broad_index_backtest_{end:%Y%m%d}"
     attribution = compute_attribution(backtest)
     sheets: dict[str, SheetRows] = {
-        "Summary": _summary_rows(
+        "概览": _summary_rows(
             config_summary,
             sleeve_weights,
             extra=_backtest_summary_extras(backtest),
         ),
-        "Sleeve picks": _sleeve_picks_rows(analysis),
-        "Metrics": _metrics_rows(backtest),
-        "Attribution": _attribution_rows(attribution),
-        "NAV curve": _nav_curve_rows(backtest),
-        "Rebalance log": _rebalance_log_rows(backtest),
-        "Top drawdown days": _top_drawdown_rows(backtest, top_n=20),
+        "Sleeve 选品": _sleeve_picks_rows(analysis),
+        "绩效指标": _metrics_rows(backtest),
+        "Sleeve 归因": _attribution_rows(attribution),
+        "净值曲线": _nav_curve_rows(backtest),
+        "调仓日志": _rebalance_log_rows(backtest),
+        "回撤前 N 日": _top_drawdown_rows(backtest, top_n=20),
     }
     if llm_narrative:
-        sheets["Narrative"] = [
-            ["LLM narrative (assistance only — not a calculation input)"],
+        sheets["LLM 解读"] = [
+            ["LLM 解读 (仅作辅助说明，不参与任何计算)"],
             [llm_narrative],
         ]
     excel_path = output_dir / f"{stem}.xlsx"
@@ -103,40 +140,40 @@ def _summary_rows(
     *,
     extra: list[tuple[str, object]] | None = None,
 ) -> SheetRows:
-    rows: SheetRows = [["Field", "Value"]]
+    rows: SheetRows = [["字段", "数值"]]
     for k, v in config_summary.items():
-        rows.append([k, _to_cell(v)])
+        rows.append([_CONFIG_LABELS.get(k, k), _to_cell(v)])
     rows.append(["—", "—"])
-    rows.append(["sleeve", "target_weight"])
+    rows.append(["Sleeve", "目标权重"])
     for sleeve, w in sleeve_weights.items():
         rows.append([sleeve, w])
     if extra:
         rows.append(["—", "—"])
         for k, v in extra:
-            rows.append([k, _to_cell(v)])
+            rows.append([_CONFIG_LABELS.get(k, k), _to_cell(v)])
     return rows
 
 
 def _sleeve_picks_rows(analysis: BroadIndexAnalysis) -> SheetRows:
     rows: SheetRows = [
         [
-            "sleeve",
-            "index_code",
-            "pick_code",
-            "pick_name",
-            "management",
-            "fee_pct",
-            "list_date",
-            "60d_avg_amount_cny",
-            "te_252d_pct",
-            "ir_252d",
-            "tr_benchmark",
+            "Sleeve",
+            "指数代码",
+            "推荐 ETF",
+            "ETF 名称",
+            "管理人",
+            "总费率%",
+            "上市日期",
+            "60日均成交额 (元)",
+            "跟踪误差% (252日)",
+            "信息比率 (252日)",
+            "全收益基准?",
         ]
     ]
     for sp in analysis.sleeve_picks:
         if sp.pick is None:
             placeholder: list[str | int | float | bool | None] = [""] * 8
-            rows.append([sp.spec.label, sp.spec.index_code, "(no eligible pick)", *placeholder])
+            rows.append([sp.spec.label, sp.spec.index_code, "(无符合条件 ETF)", *placeholder])
             continue
         m = sp.pick
         rows.append(
@@ -151,37 +188,37 @@ def _sleeve_picks_rows(analysis: BroadIndexAnalysis) -> SheetRows:
                 m.avg_daily_amount_60d,
                 m.tracking_error_252d_pct if m.tracking_error_252d_pct is not None else "",
                 m.info_ratio_252d if m.info_ratio_252d is not None else "",
-                "Y" if m.is_total_return_benchmark else "N",
+                "是" if m.is_total_return_benchmark else "否",
             ]
         )
     return rows
 
 
 def _target_plan_rows(target_plan: AllocationPlan) -> SheetRows:
-    rows: SheetRows = [["etf_code", "weight", "score", "reason"]]
+    rows: SheetRows = [["ETF 代码", "目标权重", "评分", "选入理由"]]
     for h in target_plan.holdings:
         rows.append([h.etf_code, h.weight, h.score, h.reason])
-    rows.append(["cash", target_plan.cash_weight, "", ""])
+    rows.append(["现金", target_plan.cash_weight, "", ""])
     rows.append(["—", "—", "—", "—"])
-    rows.append(["constraint", "passed"])
+    rows.append(["约束", "是否满足"])
     for k, v in target_plan.constraint_checks.items():
-        rows.append([k, v])
+        rows.append([_CONSTRAINT_LABELS.get(k, k), "是" if v else "否"])
     return rows
 
 
 def _rebalance_rows(lines: list[RebalanceLine]) -> SheetRows:
     rows: SheetRows = [
         [
-            "sleeve",
-            "ts_code",
-            "target_weight",
-            "current_weight",
-            "drift_pp",
-            "action",
-            "target_notional_cny",
-            "delta_notional_cny",
-            "last_price",
-            "delta_shares_lot100",
+            "Sleeve",
+            "ETF 代码",
+            "目标权重",
+            "当前权重",
+            "偏离 (pp)",
+            "动作",
+            "目标金额 (元)",
+            "调整金额 (元)",
+            "最新价",
+            "调仓股数 (100股整)",
         ]
     ]
     for line in lines:
@@ -192,7 +229,7 @@ def _rebalance_rows(lines: list[RebalanceLine]) -> SheetRows:
                 line.target_weight,
                 line.current_weight,
                 line.drift_pp,
-                line.action,
+                _ACTION_LABELS.get(line.action, line.action),
                 line.target_notional_cny,
                 line.delta_notional_cny,
                 line.last_price,
@@ -206,27 +243,27 @@ def _backtest_summary_extras(backtest: BroadIndexBacktest) -> list[tuple[str, ob
     if not backtest.curve:
         return []
     extras: list[tuple[str, object]] = [
-        ("backtest_start", backtest.curve[0].trade_date.isoformat()),
-        ("backtest_end", backtest.curve[-1].trade_date.isoformat()),
-        ("rebalance_count", len(backtest.rebalances)),
-        ("final_nav", backtest.curve[-1].nav),
+        ("回测起始", backtest.curve[0].trade_date.isoformat()),
+        ("回测结束", backtest.curve[-1].trade_date.isoformat()),
+        ("调仓次数", len(backtest.rebalances)),
+        ("期末净值", backtest.curve[-1].nav),
     ]
     return extras
 
 
 def _metrics_rows(backtest: BroadIndexBacktest) -> SheetRows:
-    rows: SheetRows = [["metric", "strategy", "benchmark"]]
+    rows: SheetRows = [["指标", "策略", "基准"]]
     m = backtest.metrics
     b = backtest.benchmark_metrics
     cells = [
-        ("total_return", m.total_return, b.total_return if b else None),
-        ("annualized_return", m.annualized_return, b.annualized_return if b else None),
-        ("volatility", m.volatility, b.volatility if b else None),
-        ("sharpe", m.sharpe, b.sharpe if b else None),
-        ("max_drawdown", m.max_drawdown, b.max_drawdown if b else None),
-        ("calmar", m.calmar, b.calmar if b else None),
-        ("win_rate", m.win_rate, b.win_rate if b else None),
-        ("tracking_error", m.tracking_error, b.tracking_error if b else None),
+        ("总收益", m.total_return, b.total_return if b else None),
+        ("年化收益 (CAGR)", m.annualized_return, b.annualized_return if b else None),
+        ("年化波动率", m.volatility, b.volatility if b else None),
+        ("Sharpe", m.sharpe, b.sharpe if b else None),
+        ("最大回撤", m.max_drawdown, b.max_drawdown if b else None),
+        ("Calmar", m.calmar, b.calmar if b else None),
+        ("胜率", m.win_rate, b.win_rate if b else None),
+        ("跟踪误差 vs 基准", m.tracking_error, b.tracking_error if b else None),
     ]
     for name, sv, bv in cells:
         rows.append([name, sv, bv if bv is not None else ""])
@@ -236,14 +273,14 @@ def _metrics_rows(backtest: BroadIndexBacktest) -> SheetRows:
 def _attribution_rows(attribution: AttributionSummary) -> SheetRows:
     rows: SheetRows = [
         [
-            "sleeve",
-            "contribution_pct",
-            "avg_weight_pct",
-            "efficiency",
-            "days_held",
-            "rebalance_count",
-            "turnover_pct",
-            "cost_cny",
+            "Sleeve",
+            "贡献 %",
+            "平均权重 %",
+            "效率 (贡献/权重)",
+            "持有天数",
+            "调仓次数",
+            "累计换手 %",
+            "交易成本 (元)",
         ]
     ]
     for s in attribution.sleeves:
@@ -261,14 +298,14 @@ def _attribution_rows(attribution: AttributionSummary) -> SheetRows:
         )
     pad: list[str | int | float | bool | None] = ["", "", "", "", "", "", ""]
     rows.append(["—"] * 8)
-    rows.append(["sum_arithmetic", attribution.sum_of_sleeve_contributions_pct, *pad])
-    rows.append(["portfolio_geometric", attribution.portfolio_total_return_pct, *pad])
-    rows.append(["residual", attribution.geometric_arithmetic_residual_pct, *pad])
+    rows.append(["算术贡献合计", attribution.sum_of_sleeve_contributions_pct, *pad])
+    rows.append(["几何组合总收益", attribution.portfolio_total_return_pct, *pad])
+    rows.append(["几何-算术差", attribution.geometric_arithmetic_residual_pct, *pad])
     return rows
 
 
 def _nav_curve_rows(backtest: BroadIndexBacktest) -> SheetRows:
-    rows: SheetRows = [["trade_date", "nav", "daily_return", "drawdown"]]
+    rows: SheetRows = [["交易日", "净值", "日收益", "回撤"]]
     for p in backtest.curve:
         rows.append([p.trade_date.isoformat(), p.nav, p.daily_return, p.drawdown])
     return rows
@@ -277,11 +314,11 @@ def _nav_curve_rows(backtest: BroadIndexBacktest) -> SheetRows:
 def _rebalance_log_rows(backtest: BroadIndexBacktest) -> SheetRows:
     rows: SheetRows = [
         [
-            "trade_date",
-            "nav_before",
-            "turnover_pct",
-            "cost_cny",
-            "triggered_codes",
+            "交易日",
+            "调仓前净值",
+            "换手率 %",
+            "成本 (元)",
+            "触发代码",
         ]
     ]
     for r in backtest.rebalances:
@@ -298,7 +335,7 @@ def _rebalance_log_rows(backtest: BroadIndexBacktest) -> SheetRows:
 
 
 def _top_drawdown_rows(backtest: BroadIndexBacktest, *, top_n: int) -> SheetRows:
-    rows: SheetRows = [["trade_date", "daily_return", "drawdown"]]
+    rows: SheetRows = [["交易日", "日收益", "回撤"]]
     if not backtest.curve:
         return rows
     losers = sorted(backtest.curve, key=lambda p: p.daily_return)[:top_n]
@@ -312,7 +349,7 @@ def _top_drawdown_rows(backtest: BroadIndexBacktest, *, top_n: int) -> SheetRows
 
 def _signal_html(sheets: dict[str, SheetRows], narrative: str) -> str:
     return _wrap_html(
-        title="Broad-index FOF rebalance signal",
+        title="宽基指数 FOF 调仓信号",
         sections=_sections_from_sheets(sheets),
         narrative=narrative,
     )
@@ -320,8 +357,8 @@ def _signal_html(sheets: dict[str, SheetRows], narrative: str) -> str:
 
 def _backtest_html(sheets: dict[str, SheetRows], narrative: str) -> str:
     return _wrap_html(
-        title="Broad-index FOF backtest report",
-        sections=_sections_from_sheets(sheets, big_sheets=("NAV curve",)),
+        title="宽基指数 FOF 回测报告",
+        sections=_sections_from_sheets(sheets, big_sheets=("净值曲线",)),
         narrative=narrative,
     )
 
@@ -333,12 +370,16 @@ def _sections_from_sheets(
 ) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for name, rows in sheets.items():
-        if not rows or name == "Narrative":
+        if not rows or name == "LLM 解读":
             continue
         if name in big_sheets and len(rows) > 60:
             head = rows[:1] + rows[1:30]
             tail = rows[-30:]
-            html = _table_html(head) + "<p><em>…rows truncated…</em></p>" + _table_html(tail)
+            html = (
+                _table_html(head)
+                + "<p><em>…中间数据已省略，完整曲线见 Excel…</em></p>"
+                + _table_html(tail)
+            )
         else:
             html = _table_html(rows)
         out.append((name, html))
@@ -359,7 +400,7 @@ def _table_html(rows: SheetRows) -> str:
 def _wrap_html(*, title: str, sections: list[tuple[str, str]], narrative: str) -> str:
     blocks = "\n".join(f"<h2>{escape(name)}</h2>{html}" for name, html in sections)
     narrative_block = (
-        f'<h2>LLM narrative</h2><p><em>Assistance only — never feeds calculations.</em></p>'
+        f'<h2>LLM 解读</h2><p><em>仅作辅助说明，不参与任何评分、权重或回测计算。</em></p>'
         f"<pre>{escape(narrative)}</pre>"
         if narrative
         else ""

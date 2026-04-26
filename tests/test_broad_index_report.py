@@ -67,6 +67,8 @@ def test_signal_report_writes_valid_xlsx_and_html(tmp_path: Path) -> None:
     html = bundle.html_path.read_text(encoding="utf-8")
     assert "510300.SH" in html
     assert "<table>" in html
+    assert "调仓信号" in html
+    assert "建仓" in html  # action "open" → "建仓"
 
 
 def test_backtest_report_includes_attribution(tmp_path: Path) -> None:
@@ -115,6 +117,7 @@ def test_backtest_report_includes_attribution(tmp_path: Path) -> None:
     assert bundle.excel_path.exists()
     assert bundle.html_path.exists()
     html = bundle.html_path.read_text(encoding="utf-8")
-    assert "Attribution" in html
+    assert "Sleeve 归因" in html
     assert "沪深300" in html
-    assert "NAV curve" in html
+    assert "净值曲线" in html
+    assert "回测报告" in html
