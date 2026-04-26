@@ -37,6 +37,8 @@ class RebalanceEvent:
     target_weights: dict[str, float]
     realized_weights_after: dict[str, float]
     triggered_codes: list[str]
+    sleeve_by_code: dict[str, str] = field(default_factory=dict)
+    turnover_per_sleeve: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,8 @@ class BroadIndexBacktest:
     rebalances: list[RebalanceEvent] = field(default_factory=list)
     benchmark_curve: list[CurvePoint] = field(default_factory=list)
     benchmark_metrics: PerformanceMetrics | None = None
+    daily_sleeve_attribution: list[dict[str, float]] = field(default_factory=list)
+    daily_sleeve_weights: list[dict[str, float]] = field(default_factory=list)
 
 
 def run_broad_index_backtest(
@@ -85,23 +89,43 @@ def run_broad_index_backtest(
     rebalances: list[RebalanceEvent] = []
     prev_nav_by_code: dict[str, float] = {}
     pit_universe = list(fetched.universe.rows)
+    current_sleeve_by_code: dict[str, str] = {}
+    daily_sleeve_attribution: list[dict[str, float]] = []
+    daily_sleeve_weights: list[dict[str, float]] = []
 
     for d in trading_days:
-        # Mark-to-market: scale each holding by its adj_nav daily return
+        # Snapshot weights at start-of-day (before MTM moves them) for attribution
+        sod_weights_per_code: dict[str, float] = (
+            {code: v / portfolio_nav for code, v in holdings_value.items()}
+            if portfolio_nav > 0
+            else {}
+        )
+
+        # MTM: scale each holding by its adj_nav daily return; track per-code daily return
+        per_code_return: dict[str, float] = {}
         for code in list(holdings_value):
             today = nav_by_code.get(code, {}).get(d)
             yesterday = prev_nav_by_code.get(code)
             if today is not None and yesterday is not None and yesterday > 0:
-                holdings_value[code] *= today / yesterday
+                ret = today / yesterday - 1.0
+                holdings_value[code] *= 1.0 + ret
+                per_code_return[code] = ret
             elif today is None:
-                # NAV missing today (suspension etc.) — keep value flat
-                pass
+                per_code_return[code] = 0.0
         portfolio_nav = sum(holdings_value.values()) + cash
         # Update prev NAV ledger for codes we touched today
         for code in nav_by_code:
             today = nav_by_code[code].get(d)
             if today is not None:
                 prev_nav_by_code[code] = today
+
+        # Per-sleeve attribution for this day = sum_{c in sleeve} weight_sod_c * return_c
+        sleeve_attribution_today: dict[str, float] = {}
+        for code, w in sod_weights_per_code.items():
+            sleeve = current_sleeve_by_code.get(code, "未分类")
+            sleeve_attribution_today[sleeve] = (
+                sleeve_attribution_today.get(sleeve, 0.0) + w * per_code_return.get(code, 0.0)
+            )
 
         if d in rebal_days:
             month_force = d.month in semiannual_force_months and _is_first_rebal_in_month(
@@ -112,6 +136,7 @@ def run_broad_index_backtest(
             )
             if pit_analysis is None:
                 pit_analysis = _default_pit_analysis(fetched, pit_universe, d)
+            current_sleeve_by_code.update(_sleeve_by_code_from_analysis(pit_analysis))
             event = _rebalance(
                 d=d,
                 pit_analysis=pit_analysis,
@@ -124,6 +149,7 @@ def run_broad_index_backtest(
                 portfolio_nav=portfolio_nav,
                 cost_rate=cost_rate,
                 force=month_force,
+                sleeve_by_code=current_sleeve_by_code,
             )
             if event is not None:
                 rebalances.append(event)
@@ -135,6 +161,13 @@ def run_broad_index_backtest(
         peak = max(peak, portfolio_nav)
         drawdown = portfolio_nav / peak - 1.0
         curve.append(CurvePoint(d, portfolio_nav, daily_return, drawdown))
+        eod_sleeve_weights: dict[str, float] = {}
+        if portfolio_nav > 0:
+            for code, v in holdings_value.items():
+                sleeve = current_sleeve_by_code.get(code, "未分类")
+                eod_sleeve_weights[sleeve] = eod_sleeve_weights.get(sleeve, 0.0) + v / portfolio_nav
+        daily_sleeve_attribution.append(sleeve_attribution_today)
+        daily_sleeve_weights.append(eod_sleeve_weights)
 
     benchmark_returns = _benchmark_returns(benchmark_nav_series, [pt.trade_date for pt in curve])
     metrics = calculate_metrics(curve, benchmark_returns)
@@ -147,6 +180,8 @@ def run_broad_index_backtest(
         rebalances=rebalances,
         benchmark_curve=bench_curve,
         benchmark_metrics=bench_metrics,
+        daily_sleeve_attribution=daily_sleeve_attribution,
+        daily_sleeve_weights=daily_sleeve_weights,
     )
 
 
@@ -162,6 +197,16 @@ def _default_pit_analysis(
     return analyze_broad_index(pit_fetched, as_of=d)
 
 
+def _sleeve_by_code_from_analysis(analysis: BroadIndexAnalysis) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for sp in analysis.sleeve_picks:
+        if sp.pick is not None:
+            out[sp.pick.ts_code] = sp.spec.label
+        for runner in sp.runners_up:
+            out.setdefault(runner.ts_code, sp.spec.label)
+    return out
+
+
 def _rebalance(
     *,
     d: date,
@@ -175,6 +220,7 @@ def _rebalance(
     portfolio_nav: float,
     cost_rate: float,
     force: bool,
+    sleeve_by_code: dict[str, str],
 ) -> RebalanceEvent | None:
     target_plan = build_target_plan(
         pit_analysis,
@@ -209,10 +255,15 @@ def _rebalance(
         return None
 
     turnover_cny = 0.0
+    turnover_per_sleeve_cny: dict[str, float] = {}
     for code in triggered:
         new_value = target_value.get(code, 0.0)
         delta = new_value - holdings_value.get(code, 0.0)
         turnover_cny += abs(delta)
+        sleeve = sleeve_by_code.get(code, "未分类")
+        turnover_per_sleeve_cny[sleeve] = (
+            turnover_per_sleeve_cny.get(sleeve, 0.0) + abs(delta)
+        )
         if new_value > 0:
             holdings_value[code] = new_value
         else:
@@ -228,6 +279,8 @@ def _rebalance(
         target_weights=dict(target_by_code),
         realized_weights_after=realized,
         triggered_codes=triggered,
+        sleeve_by_code=dict(sleeve_by_code),
+        turnover_per_sleeve={s: v / portfolio_nav for s, v in turnover_per_sleeve_cny.items()},
     )
 
 
