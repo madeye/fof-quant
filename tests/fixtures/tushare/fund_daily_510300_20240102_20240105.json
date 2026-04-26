@@ -1,0 +1,61 @@
+{
+  "api": "fund_daily",
+  "fields": [
+    "ts_code",
+    "trade_date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "vol",
+    "amount"
+  ],
+  "params": {
+    "end_date": "20240105",
+    "start_date": "20240102",
+    "ts_code": "510300.SH"
+  },
+  "rows": [
+    {
+      "amount": 5796964.474,
+      "close": 3.396,
+      "high": 3.439,
+      "low": 3.377,
+      "open": 3.404,
+      "trade_date": "20240105",
+      "ts_code": "510300.SH",
+      "vol": 16996696.66
+    },
+    {
+      "amount": 5674869.534,
+      "close": 3.413,
+      "high": 3.442,
+      "low": 3.387,
+      "open": 3.442,
+      "trade_date": "20240104",
+      "ts_code": "510300.SH",
+      "vol": 16661524.81
+    },
+    {
+      "amount": 3654757.871,
+      "close": 3.443,
+      "high": 3.46,
+      "low": 3.428,
+      "open": 3.446,
+      "trade_date": "20240103",
+      "ts_code": "510300.SH",
+      "vol": 10617502.73
+    },
+    {
+      "amount": 3269676.679,
+      "close": 3.453,
+      "high": 3.502,
+      "low": 3.451,
+      "open": 3.502,
+      "trade_date": "20240102",
+      "ts_code": "510300.SH",
+      "vol": 9429305.78
+    }
+  ],
+  "source": "tushare"
+}

@@ -21,8 +21,9 @@
 - Normalize symbols, dates, numeric fields, and provider-specific naming.
 - Store raw and normalized cache files with data version metadata.
 - Add validation reports for coverage, missing values, duplicates, and stale data.
+- Keep a small real Tushare snapshot fixture in tests so provider normalization is checked against actual API output without requiring live credentials in CI.
 
-**Exit criteria:** Data refresh and cache-read commands work for a small configured universe, and fixture tests validate normalization behavior.
+**Exit criteria:** Data refresh and cache-read commands work for a small configured universe, and fixture tests validate normalization behavior against both synthetic cases and a real Tushare snapshot.
 
 ## Phase 2: Stock-Through Factor Engine
 
