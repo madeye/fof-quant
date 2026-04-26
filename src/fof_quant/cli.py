@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Annotated
 
@@ -5,10 +6,13 @@ import typer
 
 from fof_quant.allocation.artifacts import write_allocation, write_scores
 from fof_quant.allocation.engine import AllocationEngine, AllocationPlan
+from fof_quant.analysis.csi300 import analyze as analyze_csi300
+from fof_quant.analysis.csi300 import render_table, write_csv
 from fof_quant.backtest.artifacts import write_backtest_result
 from fof_quant.backtest.engine import BacktestEngine
 from fof_quant.config import AppConfig, load_config
 from fof_quant.data.cache import CacheStore
+from fof_quant.data.csi300 import fetch_csi300, load_csi300
 from fof_quant.data.provider import DataRequest
 from fof_quant.data.refresh import DEFAULT_DATASETS, refresh_datasets
 from fof_quant.data.tushare import build_tushare_provider
@@ -29,6 +33,7 @@ allocate_app = typer.Typer(help="Allocation commands.")
 backtest_app = typer.Typer(help="Backtest commands.")
 report_app = typer.Typer(help="Report commands.")
 pipeline_app = typer.Typer(help="Pipeline commands.")
+analyze_app = typer.Typer(help="Analysis commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
@@ -37,6 +42,7 @@ app.add_typer(allocate_app, name="allocate")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(report_app, name="report")
 app.add_typer(pipeline_app, name="pipeline")
+app.add_typer(analyze_app, name="analyze")
 
 
 @app.callback()
@@ -264,3 +270,42 @@ def run_pipeline(
     """Run the offline artifact pipeline."""
     artifacts = run_offline_pipeline(load_config(config))
     typer.echo(f"Wrote artifact manifest: {artifacts['manifest']}")
+
+
+@analyze_app.command("csi300")
+def analyze_csi300_command(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/csi300.yaml"),
+    refresh: Annotated[
+        bool,
+        typer.Option(
+            "--refresh/--no-refresh",
+            help="Pull fresh data from Tushare before analyzing.",
+        ),
+    ] = False,
+) -> None:
+    """Analyze CSI 300 ETFs and write a ranked report."""
+    loaded = load_config(config)
+    end_date = loaded.data.end_date or date.today()
+    if refresh:
+        result = fetch_csi300(
+            cache_dir=loaded.data.cache_dir,
+            start_date=loaded.data.start_date,
+            end_date=end_date,
+        )
+    else:
+        result = load_csi300(loaded.data.cache_dir)
+    analysis = analyze_csi300(result)
+    csv_path = write_csv(analysis, loaded.reports.output_dir)
+    typer.echo(render_table(analysis))
+    typer.echo(f"\nWrote CSV: {csv_path}")
