@@ -26,7 +26,9 @@ from fof_quant.factors.exposure import ExposureResolver
 from fof_quant.logging import configure_logging
 from fof_quant.pipeline import run_offline_pipeline
 from fof_quant.pipeline_broad_index import (
+    render_backtest_summary,
     render_rebalance_table,
+    run_broad_index_backtest_pipeline,
     run_broad_index_pipeline,
 )
 from fof_quant.reports.generator import ReportGenerator
@@ -399,9 +401,37 @@ def run_broad_index_command(
         float,
         typer.Option("--rel-band-pct", help="Relative drift band in percent of target weight."),
     ] = 25.0,
+    backtest: Annotated[
+        bool,
+        typer.Option(
+            "--backtest/--no-backtest",
+            help=(
+                "Walk the rule monthly across cached history and emit NAV / Sharpe / MDD "
+                "plus a per-rebalance log."
+            ),
+        ),
+    ] = False,
 ) -> None:
-    """Generate the broad-index FOF rebalance signal from cached data + current holdings."""
+    """Generate the broad-index FOF rebalance signal, or run the strategy as a backtest."""
     loaded = load_config(config)
+    if backtest:
+        end_date = loaded.data.end_date or date.today()
+        result, manifest_path = run_broad_index_backtest_pipeline(
+            cache_dir=loaded.data.cache_dir,
+            output_dir=loaded.reports.output_dir,
+            start_date=loaded.data.start_date,
+            end_date=end_date,
+            initial_cash=loaded.backtest.initial_cash,
+            cash_buffer=loaded.strategy.cash_buffer,
+            max_weight=loaded.strategy.max_weight,
+            abs_band_pp=abs_band_pp,
+            rel_band_pct=rel_band_pct,
+            transaction_cost_bps=loaded.backtest.transaction_cost_bps,
+            slippage_bps=loaded.backtest.slippage_bps,
+        )
+        typer.echo(render_backtest_summary(result))
+        typer.echo(f"\nManifest: {manifest_path}")
+        return
     artifacts = run_broad_index_pipeline(
         cache_dir=loaded.data.cache_dir,
         output_dir=loaded.reports.output_dir,
