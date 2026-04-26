@@ -1,5 +1,24 @@
 # ETF FOF Implementation Checklist
 
+> **Status note (2026-04-26):** The boxes below describe the engine-level
+> code, which is in place. They do **not** mean each engine is wired into
+> a real end-to-end run via `fof-quant pipeline`. The `pipeline run` path
+> still feeds engines empty inputs; real value today flows through
+> `fof-quant analyze csi300` and `fof-quant analyze broad-index`. See
+> ROADMAP Phase 6.5 for the operational-pipeline milestone that closes
+> this gap.
+
+## Operational Pipeline (broad-index)
+
+- [ ] Take a current-holdings file (`holdings.json`) as input.
+- [ ] Build target `AllocationPlan` from sleeve picks + sleeve weight map.
+- [ ] Compute drift (current vs target) per sleeve.
+- [ ] Apply band-rebalance rule (±5pp absolute, ±25% relative, semi-annual force).
+- [ ] Emit trade list (notional + share counts at last NAV/close).
+- [ ] Write JSON manifest + Excel/HTML report from the trade list.
+- [ ] Add `fof-quant pipeline broad-index --current holdings.json` CLI.
+- [ ] Add tests for drift math and band-rebalance edge cases.
+
 ## Repo Scaffold
 
 - [x] Create Python package structure for data, factors, allocation, backtest, reports, and CLI modules.
