@@ -6,6 +6,12 @@ from datetime import date
 from pathlib import Path
 
 from fof_quant.allocation.engine import AllocationPlan
+from fof_quant.analysis.attribution import (
+    attribution_payload,
+    compute_attribution,
+    render_attribution_table,
+    render_attribution_top_drawdown,
+)
 from fof_quant.analysis.broad_index import (
     BroadIndexAnalysis,
 )
@@ -216,10 +222,18 @@ def render_backtest_summary(backtest: BroadIndexBacktest) -> str:
             f"CAGR {bench.annualized_return * 100:+.2f}%   "
             f"Sharpe {bench.sharpe:.2f}   MaxDD {bench.max_drawdown * 100:.2f}%"
         )
+    attribution = compute_attribution(backtest)
+    if attribution.sleeves:
+        lines.append("")
+        lines.append("Sleeve attribution:")
+        lines.append(render_attribution_table(attribution))
+        lines.append("")
+        lines.append(render_attribution_top_drawdown(backtest, top_n_days=5))
     return "\n".join(lines)
 
 
 def _backtest_manifest(backtest: BroadIndexBacktest) -> dict[str, object]:
+    attribution = compute_attribution(backtest)
     return {
         "as_of_start": backtest.curve[0].trade_date.isoformat() if backtest.curve else None,
         "as_of_end": backtest.curve[-1].trade_date.isoformat() if backtest.curve else None,
@@ -227,6 +241,7 @@ def _backtest_manifest(backtest: BroadIndexBacktest) -> dict[str, object]:
         "benchmark_metrics": _metrics_payload(backtest.benchmark_metrics)
         if backtest.benchmark_metrics
         else None,
+        "attribution": attribution_payload(attribution),
         "rebalances": [
             {
                 "trade_date": r.trade_date.isoformat(),
