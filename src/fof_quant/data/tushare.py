@@ -74,7 +74,7 @@ def build_tushare_provider() -> TushareProvider:
     if not token:
         raise ValueError("Tushare token is not configured; set TUSHARE_TOKEN in .env or shell")
     try:
-        import tushare as ts  # type: ignore[import-not-found]
+        import tushare as ts  # type: ignore[import-untyped]
     except ImportError as exc:
         raise RuntimeError("tushare package is required for live data refresh") from exc
     return TushareProvider(ts.pro_api(token))
