@@ -6,11 +6,15 @@ import typer
 
 from fof_quant.allocation.artifacts import write_allocation, write_scores
 from fof_quant.allocation.engine import AllocationEngine, AllocationPlan
+from fof_quant.analysis.broad_index import analyze as analyze_broad_index
+from fof_quant.analysis.broad_index import render_correlation, render_picks
+from fof_quant.analysis.broad_index import write_csv as write_broad_csv
 from fof_quant.analysis.csi300 import analyze as analyze_csi300
 from fof_quant.analysis.csi300 import render_table, write_csv
 from fof_quant.backtest.artifacts import write_backtest_result
 from fof_quant.backtest.engine import BacktestEngine
 from fof_quant.config import AppConfig, load_config
+from fof_quant.data.broad_index import fetch_broad_index, load_broad_index
 from fof_quant.data.cache import CacheStore
 from fof_quant.data.csi300 import fetch_csi300, load_csi300
 from fof_quant.data.provider import DataRequest
@@ -308,4 +312,45 @@ def analyze_csi300_command(
     analysis = analyze_csi300(result)
     csv_path = write_csv(analysis, loaded.reports.output_dir)
     typer.echo(render_table(analysis))
+    typer.echo(f"\nWrote CSV: {csv_path}")
+
+
+@analyze_app.command("broad-index")
+def analyze_broad_index_command(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/broad_index.yaml"),
+    refresh: Annotated[
+        bool,
+        typer.Option(
+            "--refresh/--no-refresh",
+            help="Pull fresh data from Tushare before analyzing.",
+        ),
+    ] = False,
+) -> None:
+    """Pick best ETF per broad-index sleeve and report the cross-sleeve correlation."""
+    loaded = load_config(config)
+    end_date = loaded.data.end_date or date.today()
+    if refresh:
+        result = fetch_broad_index(
+            cache_dir=loaded.data.cache_dir,
+            start_date=loaded.data.start_date,
+            end_date=end_date,
+        )
+    else:
+        result = load_broad_index(loaded.data.cache_dir)
+    analysis = analyze_broad_index(result)
+    csv_path = write_broad_csv(analysis, loaded.reports.output_dir)
+    typer.echo(render_picks(analysis))
+    typer.echo("\nBenchmark return correlation (252d):")
+    typer.echo(render_correlation(analysis))
     typer.echo(f"\nWrote CSV: {csv_path}")
