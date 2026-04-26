@@ -29,6 +29,7 @@ Real `.env` files and credential directories are ignored by Git.
 ```bash
 uv run fof-quant --help
 uv run fof-quant config validate --config configs/example.yaml
+uv run fof-quant pipeline run --config configs/example.yaml
 uv run ruff check .
 uv run mypy src tests
 uv run pytest

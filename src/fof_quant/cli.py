@@ -15,6 +15,8 @@ from fof_quant.data.tushare import build_tushare_provider
 from fof_quant.factors.artifacts import write_factor_snapshots
 from fof_quant.factors.engine import FactorEngine, FactorInput
 from fof_quant.factors.exposure import ExposureResolver
+from fof_quant.logging import configure_logging
+from fof_quant.pipeline import run_offline_pipeline
 from fof_quant.reports.generator import ReportGenerator
 from fof_quant.scoring.engine import ScoringEngine
 
@@ -26,6 +28,7 @@ score_app = typer.Typer(help="Scoring commands.")
 allocate_app = typer.Typer(help="Allocation commands.")
 backtest_app = typer.Typer(help="Backtest commands.")
 report_app = typer.Typer(help="Report commands.")
+pipeline_app = typer.Typer(help="Pipeline commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
@@ -33,11 +36,18 @@ app.add_typer(score_app, name="score")
 app.add_typer(allocate_app, name="allocate")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(report_app, name="report")
+app.add_typer(pipeline_app, name="pipeline")
 
 
 @app.callback()
-def main() -> None:
+def main(
+    log_level: Annotated[
+        str,
+        typer.Option("--log-level", help="Python logging level."),
+    ] = "INFO",
+) -> None:
     """Run ETF FOF research workflows."""
+    configure_logging(log_level)
 
 
 @config_app.command("validate")
@@ -234,3 +244,23 @@ def build_report(
     bundle = ReportGenerator(load_config(config)).generate()
     typer.echo(f"Wrote Excel report: {bundle.excel_path}")
     typer.echo(f"Wrote HTML report: {bundle.html_path}")
+
+
+@pipeline_app.command("run")
+def run_pipeline(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/example.yaml"),
+) -> None:
+    """Run the offline artifact pipeline."""
+    artifacts = run_offline_pipeline(load_config(config))
+    typer.echo(f"Wrote artifact manifest: {artifacts['manifest']}")

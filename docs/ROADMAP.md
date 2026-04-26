@@ -10,6 +10,8 @@
 - Set up deterministic fixtures for unit and integration tests.
 - Document environment setup, Tushare token configuration, and common commands.
 
+**Status:** Implemented.
+
 **Exit criteria:** The project installs locally, CLI help works, config validation is tested, and fixture-based tests run without external services.
 
 ## Phase 1: Tushare Data Layer and Cache
@@ -23,6 +25,8 @@
 - Add validation reports for coverage, missing values, duplicates, and stale data.
 - Keep a small real Tushare snapshot fixture in tests so provider normalization is checked against actual API output without requiring live credentials in CI.
 
+**Status:** Implemented for the provider/cache boundary, offline fixture validation, and live refresh entry point.
+
 **Exit criteria:** Data refresh and cache-read commands work for a small configured universe, and fixture tests validate normalization behavior against both synthetic cases and a real Tushare snapshot.
 
 ## Phase 2: Stock-Through Factor Engine
@@ -34,6 +38,8 @@
 - Compute underlying stock factors and aggregate them into ETF-level factor snapshots.
 - Add industry/sector, concentration, liquidity, and style exposure tables.
 - Persist factor snapshots by rebalance date for audit and reuse.
+
+**Status:** Implemented.
 
 **Exit criteria:** A rebalance date can produce ETF factor tables with traceable underlying stock contributions and tested aggregation math.
 
@@ -47,6 +53,8 @@
 - Implement allocation constraints including max weight, min holdings, turnover, and cash buffer.
 - Export target holdings and deterministic allocation explanations.
 
+**Status:** Implemented.
+
 **Exit criteria:** The CLI can generate a target allocation for a configured date with constraint checks and score attribution.
 
 ## Phase 4: Backtest Engine and Metrics
@@ -58,6 +66,8 @@
 - Calculate NAV curve, drawdowns, benchmark-relative returns, turnover, and risk metrics.
 - Save holdings, trades, daily portfolio state, and metrics as artifacts.
 - Add regression tests for portfolio accounting and metric formulas.
+
+**Status:** Implemented.
 
 **Exit criteria:** A historical backtest produces reproducible outputs and passes fixture-based accounting tests.
 
@@ -71,6 +81,8 @@
 - Clearly label LLM text as narrative assistance and keep it outside core calculations.
 - Add report rendering checks for required sections and artifact paths.
 
+**Status:** Implemented.
+
 **Exit criteria:** A full pipeline run creates complete Excel and HTML reports from cached data, with optional LLM text disabled by default.
 
 ## Phase 6: Future Web Dashboard
@@ -81,5 +93,7 @@
 - Add pages for universe inspection, factor drill-down, allocation review, and backtest comparison.
 - Reuse the same calculation artifacts and APIs created for CLI reports.
 - Keep Web functionality separate from v1 acceptance criteria until requirements are validated.
+
+**Status:** Implemented as an artifact manifest for a future dashboard reader; no interactive dashboard is in v1.
 
 **Exit criteria:** A dashboard prototype can read existing artifacts without changing core calculation logic.

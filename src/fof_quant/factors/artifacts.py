@@ -16,7 +16,12 @@ def write_factor_snapshots(
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"factor_snapshots_{rebalance_date.isoformat()}.json"
     path.write_text(
-        json.dumps([asdict(snapshot) for snapshot in snapshots], ensure_ascii=False, indent=2),
+        json.dumps(
+            [asdict(snapshot) for snapshot in snapshots],
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        ),
         encoding="utf-8",
     )
     return path
