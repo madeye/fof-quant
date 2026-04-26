@@ -4,7 +4,9 @@ from typing import Annotated
 import typer
 
 from fof_quant.allocation.artifacts import write_allocation, write_scores
-from fof_quant.allocation.engine import AllocationEngine
+from fof_quant.allocation.engine import AllocationEngine, AllocationPlan
+from fof_quant.backtest.artifacts import write_backtest_result
+from fof_quant.backtest.engine import BacktestEngine
 from fof_quant.config import AppConfig, load_config
 from fof_quant.data.cache import CacheStore
 from fof_quant.data.provider import DataRequest
@@ -20,10 +22,12 @@ config_app = typer.Typer(help="Configuration commands.")
 data_app = typer.Typer(help="Data commands.")
 factors_app = typer.Typer(help="Factor commands.")
 score_app = typer.Typer(help="Scoring commands.")
+backtest_app = typer.Typer(help="Backtest commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
 app.add_typer(score_app, name="score")
+app.add_typer(backtest_app, name="backtest")
 
 
 @app.callback()
@@ -148,3 +152,33 @@ def run_scoring(
     allocation_path = write_allocation(plan, loaded.reports.output_dir)
     typer.echo(f"Wrote scores: {score_path}")
     typer.echo(f"Wrote allocation: {allocation_path}")
+
+
+@backtest_app.command("run")
+def run_backtest(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/example.yaml"),
+) -> None:
+    """Run a backtest from prepared artifacts."""
+    loaded = load_config(config)
+    engine = BacktestEngine(
+        initial_cash=loaded.backtest.initial_cash,
+        transaction_cost_bps=loaded.backtest.transaction_cost_bps,
+        slippage_bps=loaded.backtest.slippage_bps,
+    )
+    result = engine.run(
+        prices=[],
+        allocation=AllocationPlan([], cash_weight=1.0, constraint_checks={}),
+    )
+    path = write_backtest_result(result, loaded.reports.output_dir)
+    typer.echo(f"Wrote backtest: {path}")
