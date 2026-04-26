@@ -8,12 +8,17 @@ from fof_quant.data.cache import CacheStore
 from fof_quant.data.provider import DataRequest
 from fof_quant.data.refresh import DEFAULT_DATASETS, refresh_datasets
 from fof_quant.data.tushare import build_tushare_provider
+from fof_quant.factors.artifacts import write_factor_snapshots
+from fof_quant.factors.engine import FactorEngine, FactorInput
+from fof_quant.factors.exposure import ExposureResolver
 
 app = typer.Typer(help="ETF FOF research CLI.")
 config_app = typer.Typer(help="Configuration commands.")
 data_app = typer.Typer(help="Data commands.")
+factors_app = typer.Typer(help="Factor commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
+app.add_typer(factors_app, name="factors")
 
 
 @app.callback()
@@ -84,3 +89,28 @@ def refresh_data(
         requests=requests,
     )
     typer.echo(f"Refreshed {len(metadata)} datasets into {loaded.data.cache_dir}")
+
+
+@factors_app.command("build")
+def build_factors(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/example.yaml"),
+) -> None:
+    """Build ETF factor snapshots from cached inputs."""
+    loaded = load_config(config)
+    engine = FactorEngine(ExposureResolver(fund_holdings=[], index_holdings=[]))
+    snapshots = engine.build(
+        FactorInput(etf_codes=[], rebalance_date=loaded.data.start_date, stock_factors=[])
+    )
+    path = write_factor_snapshots(snapshots, loaded.reports.output_dir, loaded.data.start_date)
+    typer.echo(f"Wrote factor snapshots: {path}")
