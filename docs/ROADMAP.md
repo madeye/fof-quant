@@ -10,7 +10,7 @@
 - Set up deterministic fixtures for unit and integration tests.
 - Document environment setup, Tushare token configuration, and common commands.
 
-**Status:** Implemented.
+**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
 
 **Exit criteria:** The project installs locally, CLI help works, config validation is tested, and fixture-based tests run without external services.
 
@@ -25,7 +25,7 @@
 - Add validation reports for coverage, missing values, duplicates, and stale data.
 - Keep a small real Tushare snapshot fixture in tests so provider normalization is checked against actual API output without requiring live credentials in CI.
 
-**Status:** Implemented for the provider/cache boundary, offline fixture validation, and live refresh entry point.
+**Status:** Implemented end-to-end for the broad-index sleeves used by `analyze csi300` and `analyze broad-index`. The generic `data refresh` CLI path still calls `etf_daily` without per-symbol iteration, which Tushare rejects in practice; live use today goes through the broad-index fetcher instead.
 
 **Exit criteria:** Data refresh and cache-read commands work for a small configured universe, and fixture tests validate normalization behavior against both synthetic cases and a real Tushare snapshot.
 
@@ -39,7 +39,7 @@
 - Add industry/sector, concentration, liquidity, and style exposure tables.
 - Persist factor snapshots by rebalance date for audit and reuse.
 
-**Status:** Implemented.
+**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
 
 **Exit criteria:** A rebalance date can produce ETF factor tables with traceable underlying stock contributions and tested aggregation math.
 
@@ -53,7 +53,7 @@
 - Implement allocation constraints including max weight, min holdings, turnover, and cash buffer.
 - Export target holdings and deterministic allocation explanations.
 
-**Status:** Implemented.
+**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
 
 **Exit criteria:** The CLI can generate a target allocation for a configured date with constraint checks and score attribution.
 
@@ -67,7 +67,7 @@
 - Save holdings, trades, daily portfolio state, and metrics as artifacts.
 - Add regression tests for portfolio accounting and metric formulas.
 
-**Status:** Implemented.
+**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
 
 **Exit criteria:** A historical backtest produces reproducible outputs and passes fixture-based accounting tests.
 
@@ -81,11 +81,27 @@
 - Clearly label LLM text as narrative assistance and keep it outside core calculations.
 - Add report rendering checks for required sections and artifact paths.
 
-**Status:** Implemented.
+**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
 
 **Exit criteria:** A full pipeline run creates complete Excel and HTML reports from cached data, with optional LLM text disabled by default.
 
-## Phase 6: Future Web Dashboard
+## Phase 6.5: Operational Pipeline (in progress)
+
+**Goal:** Make `fof-quant pipeline ...` produce a real monthly rebalance signal from cached broad-index data, not from empty inputs.
+
+- Take a current-holdings file (`holdings.json`) as input.
+- Reuse `analysis/broad_index._rank_sleeve` to pick one ETF per sleeve.
+- Build a target `AllocationPlan` from a configurable sleeve-weight map.
+- Compute drift (current vs target) and apply the band-rebalance rule (±5pp absolute or ±25% relative; forced semi-annual rebalance).
+- Emit a trade list (notional + share counts at last NAV/close) and a JSON manifest alongside the existing Excel/HTML report.
+- Keep the formal stock-through `pipeline.py` path untouched until Phase 2 has a real stock-factor source.
+
+**Status:** Target-weight + drift module and `pipeline broad-index` CLI in flight on `feature/csi300-analysis`.
+
+**Exit criteria:** `fof-quant pipeline broad-index --current holdings.json -c configs/broad_index.yaml` produces an Excel + manifest with a non-empty trade list and explicit constraint checks.
+
+## Phase 7: Future Web Dashboard
+
 
 **Goal:** Explore an interactive UI only after the CLI/report workflow is stable.
 

@@ -25,6 +25,10 @@ from fof_quant.factors.engine import FactorEngine, FactorInput
 from fof_quant.factors.exposure import ExposureResolver
 from fof_quant.logging import configure_logging
 from fof_quant.pipeline import run_offline_pipeline
+from fof_quant.pipeline_broad_index import (
+    render_rebalance_table,
+    run_broad_index_pipeline,
+)
 from fof_quant.reports.generator import ReportGenerator
 from fof_quant.scoring.engine import ScoringEngine
 
@@ -354,3 +358,60 @@ def analyze_broad_index_command(
     typer.echo("\nBenchmark return correlation (252d):")
     typer.echo(render_correlation(analysis))
     typer.echo(f"\nWrote CSV: {csv_path}")
+
+
+@pipeline_app.command("broad-index")
+def run_broad_index_command(
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a YAML configuration file.",
+        ),
+    ] = Path("configs/broad_index.yaml"),
+    current: Annotated[
+        Path | None,
+        typer.Option(
+            "--current",
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            help="Path to a holdings JSON file. Omit to start from all-cash.",
+        ),
+    ] = None,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force/--no-force",
+            help="Force a full rebalance regardless of band drift (use semi-annually).",
+        ),
+    ] = False,
+    abs_band_pp: Annotated[
+        float,
+        typer.Option("--abs-band-pp", help="Absolute drift band in percentage points."),
+    ] = 5.0,
+    rel_band_pct: Annotated[
+        float,
+        typer.Option("--rel-band-pct", help="Relative drift band in percent of target weight."),
+    ] = 25.0,
+) -> None:
+    """Generate the broad-index FOF rebalance signal from cached data + current holdings."""
+    loaded = load_config(config)
+    artifacts = run_broad_index_pipeline(
+        cache_dir=loaded.data.cache_dir,
+        output_dir=loaded.reports.output_dir,
+        holdings_path=current,
+        initial_cash_if_empty=loaded.backtest.initial_cash,
+        cash_buffer=loaded.strategy.cash_buffer,
+        max_weight=loaded.strategy.max_weight,
+        abs_band_pp=abs_band_pp,
+        rel_band_pct=rel_band_pct,
+        force_rebalance=force,
+    )
+    typer.echo(render_rebalance_table(artifacts.rebalance_lines, artifacts.total_aum_cny))
+    typer.echo(f"\nManifest: {artifacts.manifest_path}")

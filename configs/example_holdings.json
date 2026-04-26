@@ -1,0 +1,11 @@
+{
+  "as_of": "2026-04-25",
+  "cash_cny": 20000,
+  "positions": [
+    {"ts_code": "563360.SH", "shares": 280000},
+    {"ts_code": "512100.SH", "shares": 55000},
+    {"ts_code": "159915.SZ", "shares": 38000},
+    {"ts_code": "588000.SH", "shares": 100000},
+    {"ts_code": "512890.SH", "shares": 130000}
+  ]
+}
