@@ -1,0 +1,48 @@
+project:
+  name: fof-quant-example
+  timezone: Asia/Shanghai
+
+data:
+  provider: tushare
+  cache_dir: cache/tushare
+  start_date: "2018-01-01"
+  end_date: null
+
+universe:
+  fund_types:
+    - broad_index_etf
+  min_listing_days: 252
+  min_avg_daily_amount: 50000000
+  include: []
+  exclude: []
+
+strategy:
+  rebalance_frequency: monthly
+  benchmark: "000300.SH"
+  cash_buffer: 0.01
+  max_weight: 0.2
+  min_holdings: 5
+  turnover_limit: 0.5
+
+factors:
+  weights:
+    momentum: 0.2
+    value: 0.15
+    quality: 0.15
+    volatility: -0.15
+    liquidity: 0.1
+    concentration: -0.1
+    size: 0.05
+    sector_balance: 0.1
+
+backtest:
+  initial_cash: 1000000
+  transaction_cost_bps: 2.0
+  slippage_bps: 1.0
+
+reports:
+  output_dir: reports
+  formats:
+    - excel
+    - html
+  llm_explanations: false
