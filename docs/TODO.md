@@ -4,9 +4,13 @@
 > pipeline) is complete: `fof-quant pipeline broad-index` produces a
 > real rebalance signal, JSON manifest, and Chinese Excel/HTML report
 > from cached broad-index data. The formal stock-through `pipeline run`
-> path still feeds engines empty inputs and is parked behind Phase 2
-> (real stock-factor source). Engine-level boxes below describe the
-> code in place and remain valid.
+> path now reads holdings, ETF prices, and stock factors from the
+> normalized cache via `pipeline_inputs.load_pipeline_inputs`, so it
+> produces real artifacts once the cache is populated. `stock_daily`
+> and `stock_daily_basic` dataset specs are available for explicit
+> refresh (kept out of `DEFAULT_DATASETS` because per-stock iteration
+> over the full A-share universe is expensive). Engine-level boxes
+> below describe the code in place and remain valid.
 
 ## Operational Pipeline (broad-index)
 

@@ -10,7 +10,7 @@
 - Set up deterministic fixtures for unit and integration tests.
 - Document environment setup, Tushare token configuration, and common commands.
 
-**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
+**Status:** Engine and artifacts implemented; `pipeline.run_offline_pipeline` now reads holdings, prices, and stock factors from the normalized cache via `pipeline_inputs.load_pipeline_inputs`, so the formal stock-through path produces real outputs once the cache is populated (empty cache yields empty artifacts).
 
 **Exit criteria:** The project installs locally, CLI help works, config validation is tested, and fixture-based tests run without external services.
 
@@ -39,7 +39,7 @@
 - Add industry/sector, concentration, liquidity, and style exposure tables.
 - Persist factor snapshots by rebalance date for audit and reuse.
 
-**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
+**Status:** Engine and artifacts implemented; `pipeline.run_offline_pipeline` now reads holdings, prices, and stock factors from the normalized cache via `pipeline_inputs.load_pipeline_inputs`, so the formal stock-through path produces real outputs once the cache is populated (empty cache yields empty artifacts).
 
 **Exit criteria:** A rebalance date can produce ETF factor tables with traceable underlying stock contributions and tested aggregation math.
 
@@ -53,7 +53,7 @@
 - Implement allocation constraints including max weight, min holdings, turnover, and cash buffer.
 - Export target holdings and deterministic allocation explanations.
 
-**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
+**Status:** Engine and artifacts implemented; `pipeline.run_offline_pipeline` now reads holdings, prices, and stock factors from the normalized cache via `pipeline_inputs.load_pipeline_inputs`, so the formal stock-through path produces real outputs once the cache is populated (empty cache yields empty artifacts).
 
 **Exit criteria:** The CLI can generate a target allocation for a configured date with constraint checks and score attribution.
 
@@ -67,7 +67,7 @@
 - Save holdings, trades, daily portfolio state, and metrics as artifacts.
 - Add regression tests for portfolio accounting and metric formulas.
 
-**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
+**Status:** Engine and artifacts implemented; `pipeline.run_offline_pipeline` now reads holdings, prices, and stock factors from the normalized cache via `pipeline_inputs.load_pipeline_inputs`, so the formal stock-through path produces real outputs once the cache is populated (empty cache yields empty artifacts).
 
 **Exit criteria:** A historical backtest produces reproducible outputs and passes fixture-based accounting tests.
 
@@ -81,7 +81,7 @@
 - Clearly label LLM text as narrative assistance and keep it outside core calculations.
 - Add report rendering checks for required sections and artifact paths.
 
-**Status:** Engine and artifacts implemented; not yet driven by `pipeline.py`, which still passes empty inputs through this engine.
+**Status:** Engine and artifacts implemented; `pipeline.run_offline_pipeline` now reads holdings, prices, and stock factors from the normalized cache via `pipeline_inputs.load_pipeline_inputs`, so the formal stock-through path produces real outputs once the cache is populated (empty cache yields empty artifacts).
 
 **Exit criteria:** A full pipeline run creates complete Excel and HTML reports from cached data, with optional LLM text disabled by default.
 

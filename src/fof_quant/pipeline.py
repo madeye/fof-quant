@@ -11,6 +11,7 @@ from fof_quant.config import AppConfig
 from fof_quant.factors.artifacts import write_factor_snapshots
 from fof_quant.factors.engine import FactorEngine, FactorInput
 from fof_quant.factors.exposure import ExposureResolver
+from fof_quant.pipeline_inputs import load_pipeline_inputs, universe_filter_from_config
 from fof_quant.reports.generator import ReportGenerator
 from fof_quant.scoring.engine import ScoringEngine
 
@@ -18,8 +19,18 @@ from fof_quant.scoring.engine import ScoringEngine
 def run_offline_pipeline(config: AppConfig) -> dict[str, str]:
     output_dir = config.reports.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
-    factors = FactorEngine(ExposureResolver([], [])).build(
-        FactorInput(etf_codes=[], rebalance_date=config.data.start_date, stock_factors=[])
+    inputs = load_pipeline_inputs(config)
+    eligible_codes = universe_filter_from_config(config, inputs.rebalance_date).eligible_codes(
+        inputs.candidates
+    )
+    factors = FactorEngine(
+        ExposureResolver(inputs.fund_holdings, inputs.index_holdings)
+    ).build(
+        FactorInput(
+            etf_codes=eligible_codes,
+            rebalance_date=inputs.rebalance_date,
+            stock_factors=inputs.stock_factors,
+        )
     )
     scores = ScoringEngine(config.factors.weights).score(factors)
     allocation = AllocationEngine(
@@ -31,11 +42,11 @@ def run_offline_pipeline(config: AppConfig) -> dict[str, str]:
         initial_cash=config.backtest.initial_cash,
         transaction_cost_bps=config.backtest.transaction_cost_bps,
         slippage_bps=config.backtest.slippage_bps,
-    ).run(prices=[], allocation=allocation)
+    ).run(prices=inputs.etf_prices, allocation=allocation)
     report = ReportGenerator(config).generate()
     artifacts = {
         "factor_snapshots": str(
-            write_factor_snapshots(factors, output_dir, config.data.start_date)
+            write_factor_snapshots(factors, output_dir, inputs.rebalance_date)
         ),
         "scores": str(write_scores(scores, output_dir)),
         "allocation": str(write_allocation(allocation, output_dir)),

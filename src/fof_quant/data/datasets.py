@@ -68,6 +68,22 @@ DATASETS: dict[str, DatasetSpec] = {
         date_field="end_date",
         symbol_field="ts_code",
     ),
+    "stock_daily": DatasetSpec(
+        name="stock_daily",
+        tushare_api="daily",
+        required_fields=frozenset({"ts_code", "trade_date", "close"}),
+        unique_key=("ts_code", "trade_date"),
+        date_field="trade_date",
+        symbol_field="ts_code",
+    ),
+    "stock_daily_basic": DatasetSpec(
+        name="stock_daily_basic",
+        tushare_api="daily_basic",
+        required_fields=frozenset({"ts_code", "trade_date"}),
+        unique_key=("ts_code", "trade_date"),
+        date_field="trade_date",
+        symbol_field="ts_code",
+    ),
 }
 
 
