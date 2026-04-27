@@ -44,6 +44,10 @@ export async function rescan(): Promise<{ added: number; total: number }> {
   return fetchJson<{ added: number; total: number }>("/api/runs/scan", { method: "POST" });
 }
 
+export function listLinkedSignals(backtestId: string): Promise<RunSummary[]> {
+  return fetchJson<RunSummary[]>(`/api/runs/${backtestId}/signals`);
+}
+
 export async function createRun(payload: CreateRunPayload): Promise<RunSummary> {
   return fetchJson<RunSummary>("/api/runs", {
     method: "POST",

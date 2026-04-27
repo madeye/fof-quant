@@ -147,6 +147,7 @@ export default function SignalForm() {
       }
       const summary = await createSignalRun({
         label: label.trim() ? label.trim() : null,
+        strategy_id: pickedBacktestId || null,
         holdings,
         initial_cash_if_empty: Number(initialCash),
         sleeve_weights: sleeveWeights,

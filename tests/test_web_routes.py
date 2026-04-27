@@ -327,6 +327,96 @@ def test_get_run_exposes_config_yaml(
     assert config["params"]["cash_buffer"] == 0.02
 
 
+def test_signal_persists_strategy_id_and_lists_under_backtest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_backtest",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal",
+        lambda **kwargs: None,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        cache_dir=tmp_path / "cache",
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        # Create the strategy backtest.
+        bt = client.post(
+            "/api/runs",
+            json={
+                "kind": "broad_index_backtest",
+                "params": {
+                    "start_date": "2024-01-02",
+                    "end_date": "2024-06-28",
+                    "initial_cash": 1_000_000,
+                    "label": "strategy A",
+                },
+            },
+        ).json()
+        backtest_id = bt["id"]
+        # Two signal runs tied to it.
+        first_signal = client.post(
+            "/api/runs/signal",
+            json={
+                "params": {
+                    "label": "Mar reb",
+                    "strategy_id": backtest_id,
+                    "initial_cash_if_empty": 1_000_000.0,
+                }
+            },
+        ).json()
+        second_signal = client.post(
+            "/api/runs/signal",
+            json={
+                "params": {
+                    "label": "Apr reb",
+                    "strategy_id": backtest_id,
+                    "initial_cash_if_empty": 1_000_000.0,
+                }
+            },
+        ).json()
+        # And one signal NOT tied to any strategy.
+        client.post(
+            "/api/runs/signal",
+            json={"params": {"initial_cash_if_empty": 1_000_000.0}},
+        )
+        # Strategy_id round-trips on the signal summary.
+        assert first_signal["strategy_id"] == backtest_id
+        assert second_signal["strategy_id"] == backtest_id
+        # New endpoint: list signals for a backtest.
+        listed = client.get(f"/api/runs/{backtest_id}/signals").json()
+    listed_ids = {s["id"] for s in listed}
+    assert listed_ids == {first_signal["id"], second_signal["id"]}
+
+
+def test_signal_rejects_unknown_strategy_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal",
+        lambda **kwargs: None,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/runs/signal",
+            json={"params": {"strategy_id": "deadbeefdeadbeef"}},
+        )
+    assert response.status_code == 400
+    assert "strategy_id" in response.json()["detail"]
+
+
 def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
     response = client.post(
         "/api/runs",

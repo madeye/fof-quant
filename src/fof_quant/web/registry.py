@@ -18,9 +18,11 @@ CREATE TABLE IF NOT EXISTS runs (
     status TEXT NOT NULL DEFAULT 'completed',
     created_at TEXT NOT NULL,
     config_yaml TEXT,
-    error TEXT
+    error TEXT,
+    strategy_id TEXT
 );
 CREATE INDEX IF NOT EXISTS runs_kind_as_of ON runs(kind, as_of_date);
+CREATE INDEX IF NOT EXISTS runs_strategy ON runs(strategy_id);
 """
 
 
@@ -37,6 +39,7 @@ class RunRecord:
     created_at: str
     config_yaml: str | None = None
     error: str | None = None
+    strategy_id: str | None = None
 
 
 class RunRegistry:
@@ -54,6 +57,9 @@ class RunRegistry:
         existing = {row["name"] for row in cur.fetchall()}
         if "error" not in existing:
             conn.execute("ALTER TABLE runs ADD COLUMN error TEXT")
+        if "strategy_id" not in existing:
+            conn.execute("ALTER TABLE runs ADD COLUMN strategy_id TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS runs_strategy ON runs(strategy_id)")
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -74,6 +80,7 @@ class RunRegistry:
                 r.created_at,
                 r.config_yaml,
                 r.error,
+                r.strategy_id,
             )
             for r in records
         ]
@@ -84,9 +91,10 @@ class RunRegistry:
                 """
                 INSERT INTO runs (
                     id, kind, label, as_of_date, output_dir,
-                    manifest_path, report_html_path, status, created_at, config_yaml, error
+                    manifest_path, report_html_path, status, created_at,
+                    config_yaml, error, strategy_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     kind=excluded.kind,
                     label=excluded.label,
@@ -97,12 +105,25 @@ class RunRegistry:
                     status=excluded.status,
                     created_at=excluded.created_at,
                     config_yaml=excluded.config_yaml,
-                    error=excluded.error
+                    error=excluded.error,
+                    strategy_id=COALESCE(excluded.strategy_id, runs.strategy_id)
                 """,
                 rows,
             )
             conn.commit()
             return cur.rowcount
+
+    def list_signals_for_strategy(self, strategy_id: str) -> list[RunRecord]:
+        with closing(self._connect()) as conn:
+            cur = conn.execute(
+                """
+                SELECT * FROM runs
+                WHERE strategy_id = ?
+                ORDER BY datetime(created_at) DESC, id DESC
+                """,
+                (strategy_id,),
+            )
+            return [_row_to_record(row) for row in cur.fetchall()]
 
     def update_status(
         self,
@@ -177,4 +198,5 @@ def _row_to_record(row: sqlite3.Row) -> RunRecord:
         created_at=row["created_at"],
         config_yaml=row["config_yaml"],
         error=row["error"] if "error" in keys else None,
+        strategy_id=row["strategy_id"] if "strategy_id" in keys else None,
     )
