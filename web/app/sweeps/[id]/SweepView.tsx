@@ -5,12 +5,12 @@ import SweepHeatmap from "@/components/SweepHeatmap";
 import type { SweepManifest } from "@/lib/types";
 
 const METRICS = [
-  { key: "sharpe", label: "Sharpe" },
-  { key: "cagr", label: "CAGR" },
-  { key: "max_drawdown", label: "Max Drawdown" },
-  { key: "calmar", label: "Calmar" },
-  { key: "tracking_error", label: "Tracking Error" },
-  { key: "avg_turnover_pct", label: "Avg Turnover" },
+  { key: "sharpe", label: "夏普比率" },
+  { key: "cagr", label: "年化收益" },
+  { key: "max_drawdown", label: "最大回撤" },
+  { key: "calmar", label: "卡玛比率" },
+  { key: "tracking_error", label: "跟踪误差" },
+  { key: "avg_turnover_pct", label: "平均换手率" },
 ] as const;
 
 type MetricKey = (typeof METRICS)[number]["key"];
@@ -28,7 +28,7 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
     <div className="space-y-6">
       <section>
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-slate-700">Metric:</span>
+          <span className="text-sm text-slate-700">指标：</span>
           <div className="flex flex-wrap gap-1">
             {METRICS.map((m) => (
               <button
@@ -55,21 +55,21 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
       </section>
       <section>
         <h2 className="text-sm font-medium mb-2 text-slate-700">
-          Top 10 by {METRICS.find((m) => m.key === metric)?.label ?? metric}
+          按「{METRICS.find((m) => m.key === metric)?.label ?? metric}」排名前 10
         </h2>
         <div className="overflow-auto rounded border bg-white">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-100">
               <tr>
-                <th className="px-3 py-2 text-left">Rank</th>
-                <th className="px-3 py-2 text-left">Scheme</th>
-                <th className="px-3 py-2 text-right">Band</th>
-                <th className="px-3 py-2 text-right">CAGR</th>
-                <th className="px-3 py-2 text-right">Vol</th>
-                <th className="px-3 py-2 text-right">Sharpe</th>
-                <th className="px-3 py-2 text-right">Max DD</th>
-                <th className="px-3 py-2 text-right">Calmar</th>
-                <th className="px-3 py-2 text-right">Turnover</th>
+                <th className="px-3 py-2 text-left">排名</th>
+                <th className="px-3 py-2 text-left">方案</th>
+                <th className="px-3 py-2 text-right">区间</th>
+                <th className="px-3 py-2 text-right">年化收益</th>
+                <th className="px-3 py-2 text-right">年化波动</th>
+                <th className="px-3 py-2 text-right">夏普</th>
+                <th className="px-3 py-2 text-right">最大回撤</th>
+                <th className="px-3 py-2 text-right">卡玛</th>
+                <th className="px-3 py-2 text-right">换手率</th>
               </tr>
             </thead>
             <tbody>
@@ -104,10 +104,10 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
       </section>
       {manifest.benchmark && (
         <section className="rounded border bg-white p-3 text-sm text-slate-700">
-          <span className="font-medium">Benchmark:</span>{" "}
-          CAGR {(manifest.benchmark.annualized_return * 100).toFixed(2)}%, Vol{" "}
-          {(manifest.benchmark.volatility * 100).toFixed(2)}%, Sharpe{" "}
-          {manifest.benchmark.sharpe.toFixed(2)}, Max DD{" "}
+          <span className="font-medium">基准：</span>{" "}
+          年化 {(manifest.benchmark.annualized_return * 100).toFixed(2)}% · 波动{" "}
+          {(manifest.benchmark.volatility * 100).toFixed(2)}% · 夏普{" "}
+          {manifest.benchmark.sharpe.toFixed(2)} · 最大回撤{" "}
           {(manifest.benchmark.max_drawdown * 100).toFixed(2)}%
         </section>
       )}

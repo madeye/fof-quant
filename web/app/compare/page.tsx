@@ -20,13 +20,15 @@ export default async function ComparePage({
   if (idList.length !== 2) {
     return (
       <div className="rounded border bg-white p-4 text-sm">
-        <p className="mb-2 font-medium">Compare needs exactly two run ids.</p>
+        <p className="mb-2 font-medium">对比功能需要正好两条实验记录。</p>
         <p>
-          Got: <code>{ids ?? "(none)"}</code>. Go back to the{" "}
+          当前传入：<code>{ids ?? "(空)"}</code>。请回到
+          {" "}
           <Link href="/" className="text-blue-600 hover:underline">
-            run list
-          </Link>{" "}
-          and select two.
+            实验列表
+          </Link>
+          {" "}
+          重新勾选两条。
         </p>
       </div>
     );
@@ -61,9 +63,9 @@ export default async function ComparePage({
     <div className="space-y-6">
       <div className="flex items-baseline gap-3">
         <Link href="/" className="text-sm text-blue-600 hover:underline">
-          ← Runs
+          ← 返回列表
         </Link>
-        <h1 className="text-xl font-semibold">Compare</h1>
+        <h1 className="text-xl font-semibold">策略对比</h1>
         <span className="text-sm text-slate-500">
           {a.run.label} vs {b.run.label}
         </span>
@@ -71,25 +73,24 @@ export default async function ComparePage({
 
       {navSeries.length === 2 ? (
         <section>
-          <h2 className="text-sm font-medium mb-2 text-slate-700">NAV (overlay)</h2>
+          <h2 className="text-sm font-medium mb-2 text-slate-700">净值曲线（叠加）</h2>
           <NavChart series={navSeries} />
         </section>
       ) : (
         <div className="rounded border bg-yellow-50 p-3 text-sm text-yellow-800">
-          NAV overlay needs two backtest runs. One or both selected runs are not
-          backtests; comparing allocations only.
+          叠加净值曲线需要两条均为回测的实验。当前所选记录中存在非回测，仅展示持仓对比。
         </div>
       )}
 
       {metricsColumns.length === 2 && (
         <section>
-          <h2 className="text-sm font-medium mb-2 text-slate-700">Metrics (side by side)</h2>
+          <h2 className="text-sm font-medium mb-2 text-slate-700">指标对比</h2>
           <MetricsTable columns={metricsColumns} />
         </section>
       )}
 
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">Allocation diff</h2>
+        <h2 className="text-sm font-medium mb-2 text-slate-700">持仓差异</h2>
         <AllocationTable columns={allocationColumns} />
       </section>
     </div>

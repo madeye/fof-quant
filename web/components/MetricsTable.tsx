@@ -1,4 +1,5 @@
 import { formatPct, formatRatio } from "@/lib/format";
+import { metricLabel } from "@/lib/labels";
 
 const PERCENT_KEYS = new Set([
   "total_return",
@@ -8,17 +9,6 @@ const PERCENT_KEYS = new Set([
   "win_rate",
   "tracking_error",
 ]);
-
-const KEY_LABELS: Record<string, string> = {
-  total_return: "Total Return",
-  annualized_return: "CAGR",
-  volatility: "Vol",
-  sharpe: "Sharpe",
-  max_drawdown: "Max DD",
-  calmar: "Calmar",
-  win_rate: "Win Rate",
-  tracking_error: "Tracking Error",
-};
 
 const ORDER = [
   "total_return",
@@ -46,21 +36,21 @@ export default function MetricsTable({ columns }: { columns: MetricsColumn[] }) 
       <table className="min-w-full text-sm">
         <thead className="bg-slate-100">
           <tr>
-            <th className="px-3 py-2 text-left font-medium">Metric</th>
+            <th className="px-3 py-2 text-left font-medium">指标</th>
             {columns.map((c) => (
               <th key={c.label} className="px-3 py-2 text-right font-medium">
                 {c.label}
               </th>
             ))}
             {showDelta && (
-              <th className="px-3 py-2 text-right font-medium">Δ (B − A)</th>
+              <th className="px-3 py-2 text-right font-medium">差值（B − A）</th>
             )}
           </tr>
         </thead>
         <tbody>
           {keys.map((key) => (
             <tr key={key} className="border-t">
-              <td className="px-3 py-2">{KEY_LABELS[key] ?? key}</td>
+              <td className="px-3 py-2">{metricLabel(key)}</td>
               {columns.map((c) => (
                 <td key={`${c.label}-${key}`} className="px-3 py-2 text-right tabular-nums">
                   {formatMetric(key, c.metrics?.[key])}
