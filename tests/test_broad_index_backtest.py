@@ -133,6 +133,32 @@ def test_costs_reduce_nav_on_open() -> None:
     assert bt.curve[-1].nav == 1_000_000.0 - 1_000.0
 
 
+def test_backtest_manifest_includes_benchmark_curve() -> None:
+    from fof_quant.pipeline_broad_index import _backtest_manifest
+
+    fetched = _make_fetched()
+    bt = run_broad_index_backtest(
+        fetched,
+        start_date=date(2024, 1, 2),
+        end_date=date(2024, 2, 29),
+        initial_cash=1_000_000.0,
+        sleeve_weights={"沪深300": 1.0},
+        cash_buffer=0.0,
+        max_weight=1.0,
+        transaction_cost_bps=0.0,
+        slippage_bps=0.0,
+    )
+    manifest = _backtest_manifest(bt, benchmark_label="沪深300")
+
+    assert manifest["benchmark_label"] == "沪深300"
+    benchmark_curve = manifest["benchmark_curve"]
+    assert isinstance(benchmark_curve, list)
+    assert len(benchmark_curve) == len(bt.curve)
+    first = benchmark_curve[0]
+    assert isinstance(first, dict)
+    assert {"trade_date", "nav", "daily_return", "drawdown"} <= set(first.keys())
+
+
 def test_force_rebalance_on_first_month_end() -> None:
     fetched = _make_fetched()
     bt = run_broad_index_backtest(

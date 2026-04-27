@@ -99,11 +99,21 @@ function ErrorPanel({ error }: { error: string }) {
 
 function BacktestView({ run, manifest }: { run: string; manifest: BacktestManifest }) {
   const curve = manifest.curve ?? [];
+  const benchmarkCurve = manifest.benchmark_curve ?? [];
+  const benchmarkLabel = manifest.benchmark_label ?? "基准";
+  const navSeries: { label: string; points: typeof curve }[] = [
+    { label: run, points: curve },
+  ];
+  if (benchmarkCurve.length > 0) {
+    navSeries.push({ label: benchmarkLabel, points: benchmarkCurve });
+  }
   return (
     <div className="space-y-4">
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">净值曲线</h2>
-        <NavChart series={[{ label: run, points: curve }]} />
+        <h2 className="text-sm font-medium mb-2 text-slate-700">
+          净值曲线{benchmarkCurve.length > 0 ? `（含 ${benchmarkLabel} 对比）` : ""}
+        </h2>
+        <NavChart series={navSeries} />
       </section>
       <section>
         <h2 className="text-sm font-medium mb-2 text-slate-700">回撤曲线</h2>
@@ -115,7 +125,7 @@ function BacktestView({ run, manifest }: { run: string; manifest: BacktestManife
           columns={[
             { label: "策略", metrics: manifest.metrics },
             ...(manifest.benchmark_metrics
-              ? [{ label: "基准", metrics: manifest.benchmark_metrics }]
+              ? [{ label: benchmarkLabel, metrics: manifest.benchmark_metrics }]
               : []),
           ]}
         />
