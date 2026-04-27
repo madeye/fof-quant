@@ -55,6 +55,26 @@ export function listLinkedSignals(backtestId: string): Promise<RunSummary[]> {
   return fetchJson<RunSummary[]>(`/api/runs/${backtestId}/signals`);
 }
 
+export async function deleteRun(
+  id: string,
+  options: { cascadeSignals?: boolean } = {}
+): Promise<void> {
+  const qs = options.cascadeSignals ? "?cascade_signals=true" : "";
+  const response = await fetch(`${BASE}/api/runs/${id}${qs}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    let detail = "";
+    try {
+      detail = (await response.json()).detail ?? "";
+    } catch {
+      detail = await response.text();
+    }
+    throw new Error(`${response.status} ${response.statusText}: ${detail}`);
+  }
+}
+
 export async function createRun(payload: CreateRunPayload): Promise<RunSummary> {
   return fetchJson<RunSummary>("/api/runs", {
     method: "POST",

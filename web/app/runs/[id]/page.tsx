@@ -5,6 +5,7 @@ import DrawdownChart from "@/components/DrawdownChart";
 import MetricsTable from "@/components/MetricsTable";
 import AllocationTable from "@/components/AllocationTable";
 import AutoRefresh from "@/components/AutoRefresh";
+import DeleteRunButton from "@/components/DeleteRunButton";
 import StatusBadge from "@/components/StatusBadge";
 import type {
   BacktestManifest,
@@ -89,16 +90,19 @@ function Header({ run, runId }: { run: RunDetail; runId: string }) {
       <h1 className="text-xl font-semibold">{run.label}</h1>
       <span className="text-sm text-slate-500">{kindLabel(run.kind)}</span>
       <StatusBadge status={run.status} />
-      {run.report_html_path && (
-        <a
-          href={reportUrl(runId)}
-          target="_blank"
-          rel="noreferrer"
-          className="ml-auto rounded border bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
-        >
-          打开原始 HTML 报告 ↗
-        </a>
-      )}
+      <div className="ml-auto flex items-center gap-2">
+        {run.report_html_path && (
+          <a
+            href={reportUrl(runId)}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded border bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+          >
+            打开原始 HTML 报告 ↗
+          </a>
+        )}
+        <DeleteRunButton runId={runId} kind={run.kind} label={run.label} />
+      </div>
     </div>
   );
 }

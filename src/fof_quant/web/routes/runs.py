@@ -88,6 +88,53 @@ def get_run(request: Request, run_id: str) -> RunDetail:
     )
 
 
+@router.delete("/runs/{run_id}", status_code=204)
+def delete_run(
+    request: Request,
+    run_id: str,
+    cascade_signals: bool = False,
+) -> None:
+    """Drop a run from the registry, and remove its per-run output dir on disk
+    if the path lives strictly under the configured reports dir."""
+    registry = _registry(request)
+    record = registry.get(run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="run not found")
+
+    # Remove linked signals first if requested (so they don't dangle with a
+    # stale strategy_id pointer after the parent backtest goes away).
+    if cascade_signals and record.kind == "broad_index_backtest":
+        for child in registry.list_signals_for_strategy(run_id):
+            _delete_artifacts(child, _reports_dir(request))
+            registry.delete(child.id)
+
+    _delete_artifacts(record, _reports_dir(request))
+    registry.delete(run_id)
+
+
+def _delete_artifacts(record: RunRecord, reports_dir: Path) -> None:
+    output_dir = Path(record.output_dir)
+    try:
+        reports_root = reports_dir.resolve()
+        output_resolved = output_dir.resolve()
+    except OSError:
+        return
+    # Only nuke the directory if it's a per-run subdirectory. Legacy CLI runs
+    # share the top-level reports/<bucket>/ folder with other artifacts; we
+    # can't safely delete those without taking siblings down too.
+    if output_resolved == reports_root:
+        return
+    try:
+        output_resolved.relative_to(reports_root)
+    except ValueError:
+        return
+    if not output_resolved.is_dir():
+        return
+    import shutil
+
+    shutil.rmtree(output_resolved, ignore_errors=True)
+
+
 @router.get("/runs/{run_id}/signals", response_model=list[RunSummary])
 def list_signals_for_run(request: Request, run_id: str) -> list[RunSummary]:
     """List signals tied to a backtest, newest first."""
