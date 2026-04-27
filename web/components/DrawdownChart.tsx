@@ -10,12 +10,12 @@ export default function DrawdownChart({ points }: { points: CurvePoint[] }) {
     xAxis: { type: "category", data: points.map((p) => p.trade_date), boundaryGap: false },
     yAxis: {
       type: "value",
-      name: "Drawdown",
+      name: "回撤",
       axisLabel: { formatter: (v: number) => `${(v * 100).toFixed(0)}%` },
     },
     series: [
       {
-        name: "Drawdown",
+        name: "回撤",
         type: "line",
         symbol: "none",
         areaStyle: { color: "rgba(220, 38, 38, 0.15)" },

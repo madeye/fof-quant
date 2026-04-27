@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "fof-quant dashboard",
-  description: "Read-only review of fof-quant runs.",
+  title: "fof-quant 看板",
+  description: "fof-quant 实验回测结果浏览与对比。",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </Link>
             <nav className="text-sm text-slate-600 flex gap-4">
               <Link href="/" className="hover:text-slate-900">
-                Runs
+                实验列表
               </Link>
             </nav>
           </div>

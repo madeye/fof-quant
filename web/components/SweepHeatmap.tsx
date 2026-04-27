@@ -18,6 +18,15 @@ const PERCENT_METRICS: ReadonlySet<MetricKey> = new Set([
   "avg_turnover_pct",
 ]);
 
+const METRIC_LABELS: Record<MetricKey, string> = {
+  sharpe: "夏普比率",
+  cagr: "年化收益",
+  max_drawdown: "最大回撤",
+  calmar: "卡玛比率",
+  tracking_error: "跟踪误差",
+  avg_turnover_pct: "平均换手率",
+};
+
 export type SweepHeatmapProps = {
   schemes: string[];
   bands: number[];
@@ -49,12 +58,13 @@ export default function SweepHeatmap({
   const inMin = Number.isFinite(min) ? min : 0;
   const inMax = Number.isFinite(max) ? max : 1;
 
+  const metricLabel = METRIC_LABELS[metric] ?? metric;
   const option = {
     tooltip: {
       formatter: (p: { data: [number, number, number] }) => {
         const [x, y, v] = p.data;
         const suffix = PERCENT_METRICS.has(metric) ? "%" : "";
-        return `${schemes[y]} · band ${bands[x]}<br/>${metric}: ${v.toFixed(
+        return `${schemes[y]} · 区间 ${bands[x]}pp<br/>${metricLabel}: ${v.toFixed(
           2
         )}${suffix}`;
       },
@@ -63,7 +73,7 @@ export default function SweepHeatmap({
     xAxis: {
       type: "category",
       data: bands.map((b) => `${b}pp`),
-      name: "Band",
+      name: "再平衡区间",
       splitArea: { show: true },
     },
     yAxis: {

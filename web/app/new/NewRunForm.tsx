@@ -92,7 +92,7 @@ export default function NewRunForm() {
       className="space-y-4 rounded border bg-white p-4 max-w-3xl"
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Start date">
+        <Field label="开始日期">
           <input
             type="date"
             required
@@ -101,7 +101,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="End date">
+        <Field label="结束日期">
           <input
             type="date"
             required
@@ -110,7 +110,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Initial cash (¥)">
+        <Field label="初始资金（元）">
           <input
             type="number"
             min={1}
@@ -120,7 +120,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Benchmark label">
+        <Field label="基准名称">
           <input
             type="text"
             value={form.benchmark_label}
@@ -128,7 +128,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Cash buffer">
+        <Field label="现金缓冲比例">
           <input
             type="number"
             min={0}
@@ -138,7 +138,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Max weight per ETF">
+        <Field label="单只 ETF 最大权重">
           <input
             type="number"
             min={0}
@@ -148,7 +148,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Abs band (pp)">
+        <Field label="绝对偏离（pp）">
           <input
             type="number"
             min={0}
@@ -158,7 +158,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Rel band (%)">
+        <Field label="相对偏离（%）">
           <input
             type="number"
             min={0}
@@ -168,7 +168,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Transaction cost (bps)">
+        <Field label="交易费率（bps）">
           <input
             type="number"
             min={0}
@@ -178,7 +178,7 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="Slippage (bps)">
+        <Field label="滑点（bps）">
           <input
             type="number"
             min={0}
@@ -189,16 +189,16 @@ export default function NewRunForm() {
           />
         </Field>
       </div>
-      <Field label="Label (optional)">
+      <Field label="实验名称（可选）">
         <input
           type="text"
           value={form.label ?? ""}
           onChange={(e) => update("label", e.target.value)}
-          placeholder="leave blank for auto-generated"
+          placeholder="留空将自动生成"
           className="w-full rounded border px-2 py-1"
         />
       </Field>
-      <Field label="Sleeve weights (JSON)">
+      <Field label="板块权重（JSON）">
         <textarea
           rows={6}
           value={form.sleeve_weights_json}
@@ -217,14 +217,14 @@ export default function NewRunForm() {
           disabled={submitting}
           className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {submitting ? "Submitting…" : "Run backtest"}
+          {submitting ? "提交中…" : "开始回测"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/")}
           className="rounded border bg-white px-4 py-2 text-sm hover:bg-slate-100"
         >
-          Cancel
+          取消
         </button>
       </div>
     </form>

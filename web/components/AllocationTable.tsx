@@ -15,14 +15,14 @@ export default function AllocationTable({ columns }: { columns: AllocationColumn
       <table className="min-w-full text-sm">
         <thead className="bg-slate-100">
           <tr>
-            <th className="px-3 py-2 text-left font-medium">ETF</th>
+            <th className="px-3 py-2 text-left font-medium">ETF 代码</th>
             {columns.map((c) => (
               <th key={c.label} className="px-3 py-2 text-right font-medium">
                 {c.label}
               </th>
             ))}
             {showDelta && (
-              <th className="px-3 py-2 text-right font-medium">Δ</th>
+              <th className="px-3 py-2 text-right font-medium">差值</th>
             )}
           </tr>
         </thead>

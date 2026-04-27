@@ -17,7 +17,7 @@ export default function NavChart({ series }: { series: NavSeries[] }) {
     legend: { data: series.map((s) => s.label) },
     grid: { left: 50, right: 30, top: 40, bottom: 40 },
     xAxis: { type: "category", data: allDates, boundaryGap: false },
-    yAxis: { type: "value", scale: true, name: "NAV" },
+    yAxis: { type: "value", scale: true, name: "净值" },
     series: series.map((s) => ({
       name: s.label,
       type: "line",
