@@ -21,6 +21,7 @@ class RunDetail(RunSummary):
     report_html_path: str | None
     metrics: dict[str, float] | None = None
     benchmark_metrics: dict[str, float] | None = None
+    config_yaml: str | None = None
 
 
 class BroadIndexBacktestParams(BaseModel):

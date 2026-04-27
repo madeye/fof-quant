@@ -84,6 +84,7 @@ def get_run(request: Request, run_id: str) -> RunDetail:
         report_html_path=record.report_html_path,
         metrics=metrics,
         benchmark_metrics=benchmark,
+        config_yaml=record.config_yaml,
     )
 
 

@@ -285,6 +285,48 @@ def test_suggest_params_surfaces_llm_error(
     assert "LLM" in response.json()["detail"]
 
 
+def test_get_run_exposes_config_yaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_backtest",
+        lambda **kwargs: None,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        cache_dir=tmp_path / "cache",
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        body = client.post(
+            "/api/runs",
+            json={
+                "kind": "broad_index_backtest",
+                "params": {
+                    "start_date": "2024-01-02",
+                    "end_date": "2024-06-28",
+                    "initial_cash": 1_000_000,
+                    "label": "with config",
+                    "sleeve_weights": {"中证A500": 0.5, "中证1000": 0.5},
+                    "cash_buffer": 0.02,
+                    "max_weight": 0.5,
+                    "abs_band_pp": 4.0,
+                    "rel_band_pct": 30.0,
+                    "transaction_cost_bps": 2,
+                    "slippage_bps": 1,
+                    "benchmark_label": "沪深300",
+                },
+            },
+        ).json()
+        detail = client.get(f"/api/runs/{body['id']}").json()
+    assert detail["config_yaml"] is not None
+    config = json.loads(detail["config_yaml"])
+    assert config["params"]["sleeve_weights"]["中证A500"] == 0.5
+    assert config["params"]["cash_buffer"] == 0.02
+
+
 def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
     response = client.post(
         "/api/runs",

@@ -22,6 +22,7 @@ export type RunDetail = RunSummary & {
   report_html_path: string | null;
   metrics: Record<string, number> | null;
   benchmark_metrics: Record<string, number> | null;
+  config_yaml?: string | null;
 };
 
 export type CurvePoint = {
