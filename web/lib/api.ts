@@ -7,7 +7,11 @@ import type {
   RunSummary,
 } from "./types";
 
-const BASE = process.env.FOF_API_BASE ?? "http://127.0.0.1:8000";
+// Server-side (RSC, server actions) talks to the API directly via loopback
+// using FOF_API_BASE. Browser-side uses the empty string so requests go
+// same-origin and nginx routes /api/* (except /api/auth/*) to the backend.
+const SERVER_BASE = process.env.FOF_API_BASE ?? "http://127.0.0.1:8000";
+const BASE = typeof window === "undefined" ? SERVER_BASE : "";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, { cache: "no-store", ...init });
@@ -37,7 +41,10 @@ export function getManifest(id: string): Promise<Manifest> {
 }
 
 export function reportUrl(id: string): string {
-  return `${BASE}/api/runs/${id}/report`;
+  // Always relative — this URL is embedded in an <a href> rendered for the
+  // browser, so it must resolve against the page origin (https://...) and
+  // not the loopback address used for server-side fetches.
+  return `/api/runs/${id}/report`;
 }
 
 export async function rescan(): Promise<{ added: number; total: number }> {
