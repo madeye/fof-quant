@@ -124,3 +124,21 @@ export type CreateRunPayload = {
   kind: "broad_index_backtest";
   params: BroadIndexBacktestParams;
 };
+
+export type CurrentHoldings = {
+  as_of: string;
+  cash_cny: number;
+  positions: Array<{ ts_code: string; shares: number }>;
+};
+
+export type BroadIndexSignalParams = {
+  label?: string | null;
+  holdings?: CurrentHoldings | null;
+  initial_cash_if_empty: number;
+  sleeve_weights?: Record<string, number> | null;
+  cash_buffer: number;
+  max_weight: number;
+  abs_band_pp: number;
+  rel_band_pct: number;
+  force_rebalance: boolean;
+};

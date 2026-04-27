@@ -9,17 +9,25 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from fof_quant.env import llm_env
 from fof_quant.web.backfill import synthesize_benchmark_curve
-from fof_quant.web.executor import execute_broad_index_backtest
+from fof_quant.web.executor import (
+    execute_broad_index_backtest,
+    execute_broad_index_signal,
+)
+from fof_quant.web.llm_suggest import LLMSuggestionError, suggest_backtest_params
 from fof_quant.web.registry import RunRecord, RunRegistry
 from fof_quant.web.scanner import scan_reports_dir
 from fof_quant.web.schemas import (
     CreateRunRequest,
+    CreateSignalRequest,
     HealthResponse,
     ManifestPayload,
     RunDetail,
     RunSummary,
     ScanResponse,
+    SuggestParamsRequest,
+    SuggestParamsResponse,
 )
 
 router = APIRouter(prefix="/api")
@@ -42,6 +50,10 @@ def _cache_dir(request: Request) -> Path:
 
 def _broad_index_cache_dir(request: Request) -> Path:
     return Path(request.app.state.broad_index_cache_dir)
+
+
+def _new_run_id() -> str:
+    return uuid.uuid4().hex[:16]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -132,6 +144,15 @@ def rescan(request: Request) -> ScanResponse:
     return ScanResponse(added=added, total=registry.count())
 
 
+@router.post("/runs/suggest", response_model=SuggestParamsResponse)
+def suggest_params(payload: SuggestParamsRequest) -> SuggestParamsResponse:
+    try:
+        params = suggest_backtest_params(env=llm_env(), user_prompt=payload.prompt)
+    except LLMSuggestionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return SuggestParamsResponse(params=params)
+
+
 @router.post("/runs", response_model=RunSummary, status_code=202)
 def create_run(
     request: Request,
@@ -143,7 +164,7 @@ def create_run(
     registry = _registry(request)
     reports_dir = _reports_dir(request)
     cache_dir = _cache_dir(request)
-    run_id = uuid.uuid4().hex[:16]
+    run_id = _new_run_id()
     output_dir = reports_dir / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
     label = payload.params.label or (
@@ -167,6 +188,49 @@ def create_run(
         registry=registry,
         run_id=run_id,
         cache_dir=cache_dir,
+        output_dir=output_dir,
+        params=payload.params,
+    )
+    return _to_summary(record)
+
+
+@router.post("/runs/signal", response_model=RunSummary, status_code=202)
+def create_signal_run(
+    request: Request,
+    payload: CreateSignalRequest,
+    background_tasks: BackgroundTasks,
+) -> RunSummary:
+    """Trigger today's broad-index trading signal.
+
+    Uses the broad-index cache (same data the existing CLI signal pipeline
+    reads). Optional current holdings are written to a per-run holdings.json
+    so the rebalance line is computed against real positions.
+    """
+    registry = _registry(request)
+    reports_dir = _reports_dir(request)
+    broad_index_cache_dir = _broad_index_cache_dir(request)
+    run_id = _new_run_id()
+    output_dir = reports_dir / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    label = payload.params.label or "当日信号"
+    record = RunRecord(
+        id=run_id,
+        kind="broad_index_signal",
+        label=label,
+        as_of_date=None,
+        output_dir=str(output_dir),
+        manifest_path=str(output_dir / "pending.json"),
+        report_html_path=None,
+        status="queued",
+        created_at=datetime.now(tz=UTC).isoformat(),
+        config_yaml=payload.model_dump_json(indent=2),
+    )
+    registry.upsert_many([record])
+    background_tasks.add_task(
+        execute_broad_index_signal,
+        registry=registry,
+        run_id=run_id,
+        cache_dir=broad_index_cache_dir,
         output_dir=output_dir,
         params=payload.params,
     )
