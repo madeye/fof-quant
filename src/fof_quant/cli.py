@@ -534,6 +534,10 @@ def web_serve(
         Path,
         typer.Option("--reports-dir", help="Directory holding existing CLI artifacts."),
     ] = Path("reports"),
+    cache_dir: Annotated[
+        Path,
+        typer.Option("--cache-dir", help="Cache dir used by triggered backtests."),
+    ] = Path("cache/tushare"),
     db_path: Annotated[
         Path,
         typer.Option("--db", help="SQLite path for the run registry."),
@@ -541,7 +545,7 @@ def web_serve(
     host: Annotated[str, typer.Option(help="Bind host.")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Bind port.")] = 8000,
 ) -> None:
-    """Start the read-only web dashboard API.
+    """Start the web dashboard API.
 
     The Next.js dev server (under web/) consumes this API; start it separately
     with `pnpm --dir web dev`.
@@ -553,7 +557,12 @@ def web_serve(
         raise typer.Exit(code=1) from exc
     from fof_quant.web.app import create_app
 
-    fastapi_app = create_app(reports_dir=reports_dir, db_path=db_path, scan_on_boot=True)
+    fastapi_app = create_app(
+        reports_dir=reports_dir,
+        cache_dir=cache_dir,
+        db_path=db_path,
+        scan_on_boot=True,
+    )
     typer.echo(
         f"Dashboard API: http://{host}:{port}  •  start the UI with: pnpm --dir web dev"
     )

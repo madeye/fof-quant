@@ -1,11 +1,14 @@
+export type RunStatus = "queued" | "running" | "completed" | "failed" | string;
+
 export type RunSummary = {
   id: string;
   kind: "broad_index_signal" | "broad_index_backtest" | "offline_pipeline";
   label: string;
   as_of_date: string | null;
-  status: string;
+  status: RunStatus;
   created_at: string;
   output_dir: string;
+  error?: string | null;
 };
 
 export type RunDetail = RunSummary & {
@@ -65,3 +68,23 @@ export type SignalManifest = {
 };
 
 export type Manifest = BacktestManifest | SignalManifest | Record<string, unknown>;
+
+export type BroadIndexBacktestParams = {
+  start_date: string;
+  end_date: string;
+  initial_cash: number;
+  sleeve_weights?: Record<string, number> | null;
+  cash_buffer: number;
+  max_weight: number;
+  abs_band_pp: number;
+  rel_band_pct: number;
+  transaction_cost_bps: number;
+  slippage_bps: number;
+  benchmark_label: string;
+  label?: string | null;
+};
+
+export type CreateRunPayload = {
+  kind: "broad_index_backtest";
+  params: BroadIndexBacktestParams;
+};

@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS runs (
     report_html_path TEXT,
     status TEXT NOT NULL DEFAULT 'completed',
     created_at TEXT NOT NULL,
-    config_yaml TEXT
+    config_yaml TEXT,
+    error TEXT
 );
 CREATE INDEX IF NOT EXISTS runs_kind_as_of ON runs(kind, as_of_date);
 """
@@ -35,6 +36,7 @@ class RunRecord:
     status: str
     created_at: str
     config_yaml: str | None = None
+    error: str | None = None
 
 
 class RunRegistry:
@@ -43,7 +45,15 @@ class RunRegistry:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with closing(self._connect()) as conn:
             conn.executescript(_SCHEMA)
+            self._migrate(conn)
             conn.commit()
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        cur = conn.execute("PRAGMA table_info(runs)")
+        existing = {row["name"] for row in cur.fetchall()}
+        if "error" not in existing:
+            conn.execute("ALTER TABLE runs ADD COLUMN error TEXT")
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -63,6 +73,7 @@ class RunRegistry:
                 r.status,
                 r.created_at,
                 r.config_yaml,
+                r.error,
             )
             for r in records
         ]
@@ -73,9 +84,9 @@ class RunRegistry:
                 """
                 INSERT INTO runs (
                     id, kind, label, as_of_date, output_dir,
-                    manifest_path, report_html_path, status, created_at, config_yaml
+                    manifest_path, report_html_path, status, created_at, config_yaml, error
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     kind=excluded.kind,
                     label=excluded.label,
@@ -85,12 +96,42 @@ class RunRegistry:
                     report_html_path=excluded.report_html_path,
                     status=excluded.status,
                     created_at=excluded.created_at,
-                    config_yaml=excluded.config_yaml
+                    config_yaml=excluded.config_yaml,
+                    error=excluded.error
                 """,
                 rows,
             )
             conn.commit()
             return cur.rowcount
+
+    def update_status(
+        self,
+        run_id: str,
+        status: str,
+        *,
+        error: str | None = None,
+        manifest_path: str | None = None,
+        report_html_path: str | None = None,
+        as_of_date: str | None = None,
+    ) -> None:
+        sets = ["status = ?"]
+        params: list[object] = [status]
+        if error is not None or status == "failed":
+            sets.append("error = ?")
+            params.append(error)
+        if manifest_path is not None:
+            sets.append("manifest_path = ?")
+            params.append(manifest_path)
+        if report_html_path is not None:
+            sets.append("report_html_path = ?")
+            params.append(report_html_path)
+        if as_of_date is not None:
+            sets.append("as_of_date = ?")
+            params.append(as_of_date)
+        params.append(run_id)
+        with closing(self._connect()) as conn:
+            conn.execute(f"UPDATE runs SET {', '.join(sets)} WHERE id = ?", params)
+            conn.commit()
 
     def list(
         self,
@@ -123,6 +164,7 @@ class RunRegistry:
 
 
 def _row_to_record(row: sqlite3.Row) -> RunRecord:
+    keys = row.keys()
     return RunRecord(
         id=row["id"],
         kind=row["kind"],
@@ -134,4 +176,5 @@ def _row_to_record(row: sqlite3.Row) -> RunRecord:
         status=row["status"],
         created_at=row["created_at"],
         config_yaml=row["config_yaml"],
+        error=row["error"] if "error" in keys else None,
     )

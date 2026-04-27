@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from fof_quant.web.executor import execute_broad_index_backtest
 from fof_quant.web.registry import RunRecord, RunRegistry
 from fof_quant.web.scanner import scan_reports_dir
 from fof_quant.web.schemas import (
+    CreateRunRequest,
     HealthResponse,
     ManifestPayload,
     RunDetail,
@@ -29,6 +33,10 @@ def _registry(request: Request) -> RunRegistry:
 
 def _reports_dir(request: Request) -> Path:
     return Path(request.app.state.reports_dir)
+
+
+def _cache_dir(request: Request) -> Path:
+    return Path(request.app.state.cache_dir)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -95,6 +103,47 @@ def rescan(request: Request) -> ScanResponse:
     return ScanResponse(added=added, total=registry.count())
 
 
+@router.post("/runs", response_model=RunSummary, status_code=202)
+def create_run(
+    request: Request,
+    payload: CreateRunRequest,
+    background_tasks: BackgroundTasks,
+) -> RunSummary:
+    if payload.kind != "broad_index_backtest":
+        raise HTTPException(status_code=400, detail=f"unsupported run kind {payload.kind}")
+    registry = _registry(request)
+    reports_dir = _reports_dir(request)
+    cache_dir = _cache_dir(request)
+    run_id = uuid.uuid4().hex[:16]
+    output_dir = reports_dir / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    label = payload.params.label or (
+        f"backtest {payload.params.start_date}→{payload.params.end_date}"
+    )
+    record = RunRecord(
+        id=run_id,
+        kind="broad_index_backtest",
+        label=label,
+        as_of_date=payload.params.end_date,
+        output_dir=str(output_dir),
+        manifest_path=str(output_dir / "pending.json"),
+        report_html_path=None,
+        status="queued",
+        created_at=datetime.now(tz=UTC).isoformat(),
+        config_yaml=payload.model_dump_json(indent=2),
+    )
+    registry.upsert_many([record])
+    background_tasks.add_task(
+        execute_broad_index_backtest,
+        registry=registry,
+        run_id=run_id,
+        cache_dir=cache_dir,
+        output_dir=output_dir,
+        params=payload.params,
+    )
+    return _to_summary(record)
+
+
 def _to_summary(record: RunRecord) -> RunSummary:
     return RunSummary(
         id=record.id,
@@ -104,6 +153,7 @@ def _to_summary(record: RunRecord) -> RunSummary:
         status=record.status,
         created_at=record.created_at,
         output_dir=record.output_dir,
+        error=record.error,
     )
 
 
