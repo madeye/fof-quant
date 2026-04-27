@@ -25,7 +25,7 @@
 - Add validation reports for coverage, missing values, duplicates, and stale data.
 - Keep a small real Tushare snapshot fixture in tests so provider normalization is checked against actual API output without requiring live credentials in CI.
 
-**Status:** Implemented end-to-end for the broad-index sleeves used by `analyze csi300` and `analyze broad-index`. The generic `data refresh` CLI path still calls `etf_daily` without per-symbol iteration, which Tushare rejects in practice; live use today goes through the broad-index fetcher instead.
+**Status:** Implemented end-to-end for the broad-index sleeves used by `analyze csi300` and `analyze broad-index`. The generic `TushareProvider.fetch` now iterates per symbol for multi-symbol requests against per-symbol APIs (`fund_daily`, `fund_nav`, `index_daily`, `index_weight`, `fund_portfolio`), so the generic `data refresh` CLI path works for arbitrary universes; the broad-index fetcher remains as a higher-level convenience.
 
 **Exit criteria:** Data refresh and cache-read commands work for a small configured universe, and fixture tests validate normalization behavior against both synthetic cases and a real Tushare snapshot.
 
