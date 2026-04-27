@@ -547,6 +547,13 @@ def web_serve(
         Path,
         typer.Option("--cache-dir", help="Cache dir used by triggered backtests."),
     ] = Path("cache/tushare"),
+    broad_index_cache_dir: Annotated[
+        Path,
+        typer.Option(
+            "--broad-index-cache-dir",
+            help="Cache dir holding broad-index data (used to backfill legacy benchmark curves).",
+        ),
+    ] = Path("cache/broad_index"),
     db_path: Annotated[
         Path,
         typer.Option("--db", help="SQLite path for the run registry."),
@@ -569,6 +576,7 @@ def web_serve(
     fastapi_app = create_app(
         reports_dir=reports_dir,
         cache_dir=cache_dir,
+        broad_index_cache_dir=broad_index_cache_dir,
         db_path=db_path,
         scan_on_boot=True,
     )
