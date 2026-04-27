@@ -12,6 +12,16 @@
 > over the full A-share universe is expensive). Engine-level boxes
 > below describe the code in place and remain valid.
 
+## Web Dashboard (Phase 7.1 — Trigger UI)
+
+- [x] `POST /api/runs` accepts `broad_index_backtest` kind + params; queues via FastAPI BackgroundTasks.
+- [x] Per-run output subdirs (`reports/<run_id>/`).
+- [x] `RunRegistry.update_status` + `error` column with lazy ALTER-TABLE migration.
+- [x] `fof-quant web serve --cache-dir` option for triggered runs.
+- [x] `/new` page on the frontend with a backtest config form.
+- [x] Run detail page auto-refreshes while queued/running and renders the captured traceback when failed.
+- [x] Tests: `tests/test_web_routes.py::test_create_run_returns_queued_summary` + rejection of unknown kind.
+
 ## Web Dashboard (Phase 7 v1.1)
 
 - [ ] Add `[project.optional-dependencies] web = [...]` group to `pyproject.toml` (fastapi, uvicorn, httpx).

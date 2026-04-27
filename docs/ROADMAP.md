@@ -119,8 +119,11 @@ The v1.1 cut focuses on review-only workflows; experiment trigger and sweep visu
 
 ### Phase 7.1 — Trigger UI
 
-- `POST /api/runs` schedules a pipeline run via FastAPI background tasks.
-- "New run" form on the frontend; per-run output subdirs under `reports/<run_id>/` so concurrent runs don't clobber each other.
+- `POST /api/runs` schedules a `broad_index_backtest` run via FastAPI background tasks; status flows queued → running → completed/failed and is surfaced via `RunRegistry.update_status`.
+- "New run" form at `/new` on the frontend; per-run output subdirs under `reports/<run_id>/`, so concurrent runs don't clobber each other.
+- Run detail page auto-refreshes while the run is in progress and shows the captured traceback when it fails.
+
+**Status:** Done.
 
 ### Phase 7.2 — Sweep heatmap
 

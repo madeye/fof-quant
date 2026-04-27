@@ -112,3 +112,66 @@ def test_post_scan_is_idempotent(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["total"] == 1
+
+
+def test_create_run_returns_queued_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    captured: dict[str, object] = {}
+
+    def fake_executor(**kwargs: object) -> None:
+        captured.update(kwargs)
+        registry = kwargs["registry"]
+        run_id = kwargs["run_id"]
+        assert isinstance(run_id, str)
+        from fof_quant.web.registry import RunRegistry
+
+        assert isinstance(registry, RunRegistry)
+        registry.update_status(run_id, "completed")
+
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_backtest", fake_executor
+    )
+    app = create_app(
+        reports_dir=reports_dir,
+        cache_dir=cache_dir,
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/runs",
+            json={
+                "kind": "broad_index_backtest",
+                "params": {
+                    "start_date": "2024-01-02",
+                    "end_date": "2024-01-31",
+                    "initial_cash": 100000.0,
+                    "label": "smoke",
+                },
+            },
+        )
+        assert response.status_code == 202
+        body = response.json()
+        assert body["status"] in {"queued", "completed"}
+        assert body["label"] == "smoke"
+        assert body["kind"] == "broad_index_backtest"
+        run_id = body["id"]
+
+    assert captured["run_id"] == run_id
+    assert (reports_dir / run_id).is_dir()
+
+
+def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
+    response = client.post(
+        "/api/runs",
+        json={
+            "kind": "broad_index_signal",
+            "params": {"start_date": "2024-01-02", "end_date": "2024-01-31"},
+        },
+    )
+    assert response.status_code == 422  # pydantic validation rejects unknown literal

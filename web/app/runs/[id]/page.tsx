@@ -4,7 +4,9 @@ import NavChart from "@/components/NavChart";
 import DrawdownChart from "@/components/DrawdownChart";
 import MetricsTable from "@/components/MetricsTable";
 import AllocationTable from "@/components/AllocationTable";
-import type { BacktestManifest, SignalManifest } from "@/lib/types";
+import AutoRefresh from "@/components/AutoRefresh";
+import StatusBadge from "@/components/StatusBadge";
+import type { BacktestManifest, RunDetail, SignalManifest } from "@/lib/types";
 import { formatCny, formatPct, formatYi } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -15,29 +17,29 @@ export default async function RunPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [run, manifest] = await Promise.all([getRun(id), getManifest(id)]);
+  const run = await getRun(id);
+  const inProgress = run.status === "queued" || run.status === "running";
+  const failed = run.status === "failed";
+
+  let manifest: unknown = null;
+  if (!inProgress && !failed) {
+    try {
+      manifest = await getManifest(id);
+    } catch (err) {
+      // Manifest is missing on disk — render the run shell with a warning.
+      manifest = { _error: err instanceof Error ? err.message : String(err) };
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline gap-3">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          ← Runs
-        </Link>
-        <h1 className="text-xl font-semibold">{run.label}</h1>
-        <span className="text-sm text-slate-500">{run.kind}</span>
-        {run.report_html_path && (
-          <a
-            href={reportUrl(id)}
-            target="_blank"
-            rel="noreferrer"
-            className="ml-auto rounded border bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
-          >
-            Open original HTML report ↗
-          </a>
-        )}
-      </div>
-
-      {run.kind === "broad_index_backtest" ? (
+      {inProgress && <AutoRefresh intervalMs={2000} />}
+      <Header run={run} runId={id} />
+      {inProgress ? (
+        <ProgressPanel status={run.status} />
+      ) : failed ? (
+        <ErrorPanel error={run.error ?? "(no error message recorded)"} />
+      ) : run.kind === "broad_index_backtest" ? (
         <BacktestView run={run.label} manifest={manifest as BacktestManifest} />
       ) : run.kind === "broad_index_signal" ? (
         <SignalView manifest={manifest as SignalManifest} />
@@ -46,6 +48,49 @@ export default async function RunPage({
           {JSON.stringify(manifest, null, 2)}
         </pre>
       )}
+    </div>
+  );
+}
+
+function Header({ run, runId }: { run: RunDetail; runId: string }) {
+  return (
+    <div className="flex items-baseline gap-3 flex-wrap">
+      <Link href="/" className="text-sm text-blue-600 hover:underline">
+        ← Runs
+      </Link>
+      <h1 className="text-xl font-semibold">{run.label}</h1>
+      <span className="text-sm text-slate-500">{run.kind}</span>
+      <StatusBadge status={run.status} />
+      {run.report_html_path && (
+        <a
+          href={reportUrl(runId)}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-auto rounded border bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+        >
+          Open original HTML report ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
+function ProgressPanel({ status }: { status: string }) {
+  return (
+    <div className="rounded border bg-white p-6 text-sm text-slate-700">
+      <div className="font-medium mb-1">Run is {status}…</div>
+      <div className="text-slate-500">
+        This page auto-refreshes every 2s until the run completes.
+      </div>
+    </div>
+  );
+}
+
+function ErrorPanel({ error }: { error: string }) {
+  return (
+    <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+      <div className="font-medium mb-1">Run failed</div>
+      <pre className="whitespace-pre-wrap text-xs">{error}</pre>
     </div>
   );
 }

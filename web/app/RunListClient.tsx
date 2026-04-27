@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { rescan } from "@/lib/api";
+import StatusBadge from "@/components/StatusBadge";
 import type { RunSummary } from "@/lib/types";
 
 type DisplayRun = RunSummary & {
@@ -46,6 +47,12 @@ export default function RunListClient({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
+        <Link
+          href="/new"
+          className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
+        >
+          + New run
+        </Link>
         <button
           onClick={refresh}
           disabled={refreshing}
@@ -93,7 +100,7 @@ export default function RunListClient({
                 <td className="px-3 py-2 text-slate-700">{run.kind}</td>
                 <td className="px-3 py-2 text-slate-700">{run.as_of_display}</td>
                 <td className="px-3 py-2 text-slate-700">{run.created_display}</td>
-                <td className="px-3 py-2 text-slate-700">{run.status}</td>
+                <td className="px-3 py-2"><StatusBadge status={run.status} /></td>
               </tr>
             ))}
           </tbody>
