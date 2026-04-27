@@ -35,8 +35,10 @@ export type BacktestManifest = {
   as_of_start: string | null;
   as_of_end: string | null;
   metrics: Record<string, number>;
+  benchmark_label?: string | null;
   benchmark_metrics: Record<string, number> | null;
   curve: CurvePoint[];
+  benchmark_curve?: CurvePoint[] | null;
   rebalances: Array<{
     trade_date: string;
     nav_before: number;

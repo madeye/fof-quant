@@ -213,7 +213,7 @@ def run_broad_index_backtest_pipeline(
         benchmark_label=benchmark_label,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest = _backtest_manifest(backtest)
+    manifest = _backtest_manifest(backtest, benchmark_label=benchmark_label)
     manifest_path = output_dir / f"broad_index_backtest_{end_date:%Y%m%d}.json"
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, default=_json_default),
@@ -276,12 +276,15 @@ def render_backtest_summary(backtest: BroadIndexBacktest) -> str:
     return "\n".join(lines)
 
 
-def _backtest_manifest(backtest: BroadIndexBacktest) -> dict[str, object]:
+def _backtest_manifest(
+    backtest: BroadIndexBacktest, *, benchmark_label: str = "沪深300"
+) -> dict[str, object]:
     attribution = compute_attribution(backtest)
     return {
         "as_of_start": backtest.curve[0].trade_date.isoformat() if backtest.curve else None,
         "as_of_end": backtest.curve[-1].trade_date.isoformat() if backtest.curve else None,
         "metrics": _metrics_payload(backtest.metrics),
+        "benchmark_label": benchmark_label,
         "benchmark_metrics": _metrics_payload(backtest.benchmark_metrics)
         if backtest.benchmark_metrics
         else None,
@@ -306,6 +309,15 @@ def _backtest_manifest(backtest: BroadIndexBacktest) -> dict[str, object]:
                 "drawdown": p.drawdown,
             }
             for p in backtest.curve
+        ],
+        "benchmark_curve": [
+            {
+                "trade_date": p.trade_date.isoformat(),
+                "nav": p.nav,
+                "daily_return": p.daily_return,
+                "drawdown": p.drawdown,
+            }
+            for p in backtest.benchmark_curve
         ],
     }
 
