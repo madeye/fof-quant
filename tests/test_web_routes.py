@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -164,6 +165,63 @@ def test_create_run_returns_queued_summary(
 
     assert captured["run_id"] == run_id
     assert (reports_dir / run_id).is_dir()
+
+
+def test_legacy_backtest_manifest_is_backfilled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    # Legacy manifest: no benchmark_curve, no benchmark_label.
+    manifest_path = reports_dir / "broad_index_backtest_20240105.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "as_of_start": "2024-01-02",
+                "as_of_end": "2024-01-05",
+                "metrics": {"sharpe": 1.0},
+                "rebalances": [],
+                "curve": [
+                    {
+                        "trade_date": "2024-01-02",
+                        "nav": 1.0,
+                        "daily_return": 0.0,
+                        "drawdown": 0.0,
+                    },
+                    {
+                        "trade_date": "2024-01-03",
+                        "nav": 1.005,
+                        "daily_return": 0.005,
+                        "drawdown": 0.0,
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    fake_series = {
+        date(2024, 1, 2): 4000.0,
+        date(2024, 1, 3): 4040.0,
+    }
+    monkeypatch.setattr(
+        "fof_quant.web.backfill._benchmark_series",
+        lambda label, cache_dir: fake_series,
+    )
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=True,
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        body = client.get(f"/api/runs/{run_id}/manifest").json()
+    assert body["benchmark_label"] == "沪深300"
+    benchmark_curve = body["benchmark_curve"]
+    assert len(benchmark_curve) == 2
+    assert benchmark_curve[0]["nav"] == 1.0  # base
+    assert abs(benchmark_curve[1]["nav"] - 1.01) < 1e-9
 
 
 def test_create_run_rejects_unknown_kind(client: TestClient) -> None:

@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from fof_quant.web.backfill import synthesize_benchmark_curve
 from fof_quant.web.executor import execute_broad_index_backtest
 from fof_quant.web.registry import RunRecord, RunRegistry
 from fof_quant.web.scanner import scan_reports_dir
@@ -37,6 +38,10 @@ def _reports_dir(request: Request) -> Path:
 
 def _cache_dir(request: Request) -> Path:
     return Path(request.app.state.cache_dir)
+
+
+def _broad_index_cache_dir(request: Request) -> Path:
+    return Path(request.app.state.broad_index_cache_dir)
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -76,9 +81,33 @@ def get_manifest(request: Request, run_id: str) -> ManifestPayload:
     if record is None:
         raise HTTPException(status_code=404, detail="run not found")
     try:
-        return _read_manifest(Path(record.manifest_path))
+        manifest = _read_manifest(Path(record.manifest_path))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=410, detail="manifest file missing") from exc
+    if record.kind == "broad_index_backtest":
+        _backfill_benchmark_curve(manifest, _broad_index_cache_dir(request))
+    return manifest
+
+
+def _backfill_benchmark_curve(manifest: dict[str, Any], cache_dir: Path) -> None:
+    existing = manifest.get("benchmark_curve")
+    if isinstance(existing, list) and existing:
+        return
+    curve = manifest.get("curve")
+    if not isinstance(curve, list) or not curve:
+        return
+    label = manifest.get("benchmark_label") or "沪深300"
+    if not isinstance(label, str):
+        label = "沪深300"
+    synthesized = synthesize_benchmark_curve(
+        strategy_curve=curve,
+        benchmark_label=label,
+        broad_index_cache_dir=cache_dir,
+    )
+    if not synthesized:
+        return
+    manifest["benchmark_curve"] = synthesized
+    manifest.setdefault("benchmark_label", label)
 
 
 @router.get("/runs/{run_id}/report", response_class=HTMLResponse)

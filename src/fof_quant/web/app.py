@@ -15,6 +15,7 @@ def create_app(
     reports_dir: Path,
     db_path: Path,
     cache_dir: Path | None = None,
+    broad_index_cache_dir: Path | None = None,
     scan_on_boot: bool = True,
 ) -> FastAPI:
     app = FastAPI(title="fof-quant dashboard", version="1.1.0")
@@ -31,5 +32,6 @@ def create_app(
     app.state.registry = registry
     app.state.reports_dir = str(reports_dir)
     app.state.cache_dir = str(cache_dir or Path("cache/tushare"))
+    app.state.broad_index_cache_dir = str(broad_index_cache_dir or Path("cache/broad_index"))
     app.include_router(runs_router)
     return app
