@@ -12,6 +12,15 @@
 > over the full A-share universe is expensive). Engine-level boxes
 > below describe the code in place and remain valid.
 
+## Web Dashboard (Phase 7.2 — Sweep Heatmap)
+
+- [x] `write_sweep_json` writes a JSON sibling to the existing sweep CSV.
+- [x] CLI `analyze sweep` emits both CSV + JSON.
+- [x] Scanner recognizes `sweep_*.json` (kind = `sweep`).
+- [x] `RunKind` extended to include `"sweep"`; run list links sweep rows to `/sweeps/[id]`.
+- [x] `/sweeps/[id]` page with ECharts heatmap (metric switcher) + Top-10 leaderboard.
+- [x] Tests: `test_write_sweep_json_round_trip` + `test_scan_picks_up_sweep_manifest`.
+
 ## Web Dashboard (Phase 7.1 — Trigger UI)
 
 - [x] `POST /api/runs` accepts `broad_index_backtest` kind + params; queues via FastAPI BackgroundTasks.

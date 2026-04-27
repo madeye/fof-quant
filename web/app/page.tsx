@@ -44,7 +44,10 @@ export default async function Home() {
       }))}
     >
       {(run) => (
-        <Link href={`/runs/${run.id}`} className="text-blue-600 hover:underline">
+        <Link
+          href={run.kind === "sweep" ? `/sweeps/${run.id}` : `/runs/${run.id}`}
+          className="text-blue-600 hover:underline"
+        >
           {run.label}
         </Link>
       )}

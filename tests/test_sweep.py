@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from fof_quant.analysis.sweep import (
     render_sweep_table,
     run_sweep,
     write_sweep_csv,
+    write_sweep_json,
 )
 from fof_quant.data.broad_index import BroadIndexFetchResult, IndexSpec
 from fof_quant.data.provider import DataTable
@@ -157,3 +159,37 @@ def test_write_sweep_csv_round_trip(tmp_path: Path) -> None:
     body = out_path.read_text(encoding="utf-8")
     assert "scheme,band_pp,final_nav" in body
     assert "core_only,5.0" in body
+
+
+def test_write_sweep_json_round_trip(tmp_path: Path) -> None:
+    fetched = _make_fetched()
+    rows, benchmark, _ = run_sweep(
+        fetched,
+        start_date=date(2024, 1, 2),
+        end_date=date(2024, 1, 31),
+        initial_cash=1_000_000.0,
+        schemes={"core_only": {"沪深300": 1.0}, "tilt": {"中证1000": 1.0}},
+        bands_pp=(3.0, 5.0),
+        cash_buffer=0.0,
+        max_weight=1.0,
+        transaction_cost_bps=0.0,
+        slippage_bps=0.0,
+    )
+    json_path = write_sweep_json(
+        rows,
+        tmp_path,
+        start_date=date(2024, 1, 2),
+        end_date=date(2024, 1, 31),
+        benchmark=benchmark,
+    )
+
+    assert json_path.exists()
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["start_date"] == "2024-01-02"
+    assert payload["end_date"] == "2024-01-31"
+    assert payload["schemes"] == ["core_only", "tilt"]
+    assert payload["bands_pp"] == [3.0, 5.0]
+    assert len(payload["rows"]) == 4
+    assert {r["scheme"] for r in payload["rows"]} == {"core_only", "tilt"}
+    if benchmark is not None:
+        assert payload["benchmark"]["sharpe"] == benchmark.sharpe

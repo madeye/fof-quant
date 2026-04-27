@@ -50,6 +50,12 @@ def _record_from_manifest(path: Path) -> RunRecord | None:
         html_name = f"broad_index_backtest_{stamp}.html"
         label = f"backtest {stamp}"
         as_of = _isoformat_stamp(stamp)
+    elif name.startswith("sweep_") and name.endswith(".json"):
+        kind = "sweep"
+        stamp = name[len("sweep_") : -len(".json")]
+        label = f"sweep {stamp}"
+        as_of = _isoformat_stamp(stamp)
+        html_name = None
     elif name == "artifact_manifest.json":
         kind = "offline_pipeline"
         label = f"offline {path.parent.name}"

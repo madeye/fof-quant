@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import csv
+import json
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
@@ -251,6 +252,59 @@ def write_sweep_csv(
     return path
 
 
+def write_sweep_json(
+    rows: list[SweepRow],
+    output_dir: Path,
+    *,
+    start_date: date,
+    end_date: date,
+    benchmark: PerformanceMetrics | None = None,
+) -> Path:
+    """Emit a JSON sibling to the sweep CSV for the dashboard heatmap.
+
+    Schema mirrors ``backtest_broad_index._backtest_manifest`` enough to share
+    helpers but adds the sweep-specific axes (schemes, bands) and per-cell row
+    payload so the frontend can render a heatmap without re-parsing the CSV.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    schemes_in_order: list[str] = []
+    bands_in_order: list[float] = []
+    for row in rows:
+        if row.scheme not in schemes_in_order:
+            schemes_in_order.append(row.scheme)
+        if row.band_pp not in bands_in_order:
+            bands_in_order.append(row.band_pp)
+    payload: dict[str, object] = {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "schemes": schemes_in_order,
+        "bands_pp": bands_in_order,
+        "rows": [asdict(row) for row in rows],
+        "benchmark": _benchmark_payload(benchmark),
+    }
+    path = output_dir / f"sweep_{end_date:%Y%m%d}.json"
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _benchmark_payload(benchmark: PerformanceMetrics | None) -> dict[str, float] | None:
+    if benchmark is None:
+        return None
+    return {
+        "total_return": benchmark.total_return,
+        "annualized_return": benchmark.annualized_return,
+        "volatility": benchmark.volatility,
+        "sharpe": benchmark.sharpe,
+        "max_drawdown": benchmark.max_drawdown,
+        "calmar": benchmark.calmar,
+        "win_rate": benchmark.win_rate,
+        "tracking_error": benchmark.tracking_error,
+    }
+
+
 __all__ = [
     "DEFAULT_BANDS_PP",
     "QUICK_BANDS_PP",
@@ -260,4 +314,5 @@ __all__ = [
     "render_sweep_table",
     "run_sweep",
     "write_sweep_csv",
+    "write_sweep_json",
 ]
