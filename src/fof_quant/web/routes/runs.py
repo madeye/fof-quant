@@ -88,6 +88,16 @@ def get_run(request: Request, run_id: str) -> RunDetail:
     )
 
 
+@router.get("/runs/{run_id}/signals", response_model=list[RunSummary])
+def list_signals_for_run(request: Request, run_id: str) -> list[RunSummary]:
+    """List signals tied to a backtest, newest first."""
+    registry = _registry(request)
+    parent = registry.get(run_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail="run not found")
+    return [_to_summary(r) for r in registry.list_signals_for_strategy(run_id)]
+
+
 @router.get("/runs/{run_id}/manifest", response_model=ManifestPayload)
 def get_manifest(request: Request, run_id: str) -> ManifestPayload:
     record = _registry(request).get(run_id)
@@ -217,6 +227,14 @@ def create_signal_run(
     output_dir = reports_dir / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
     label = payload.params.label or "当日信号"
+    strategy_id = payload.params.strategy_id
+    if strategy_id is not None:
+        parent = registry.get(strategy_id)
+        if parent is None or parent.kind != "broad_index_backtest":
+            raise HTTPException(
+                status_code=400,
+                detail=f"strategy_id {strategy_id} is not a known broad_index_backtest run",
+            )
     record = RunRecord(
         id=run_id,
         kind="broad_index_signal",
@@ -228,6 +246,7 @@ def create_signal_run(
         status="queued",
         created_at=datetime.now(tz=UTC).isoformat(),
         config_yaml=payload.model_dump_json(indent=2),
+        strategy_id=strategy_id,
     )
     registry.upsert_many([record])
     background_tasks.add_task(
@@ -251,6 +270,7 @@ def _to_summary(record: RunRecord) -> RunSummary:
         created_at=record.created_at,
         output_dir=record.output_dir,
         error=record.error,
+        strategy_id=record.strategy_id,
     )
 
 

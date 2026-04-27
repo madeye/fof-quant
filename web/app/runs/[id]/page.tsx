@@ -1,12 +1,17 @@
 import Link from "next/link";
-import { getManifest, getRun, reportUrl } from "@/lib/api";
+import { getManifest, getRun, listLinkedSignals, reportUrl } from "@/lib/api";
 import NavChart from "@/components/NavChart";
 import DrawdownChart from "@/components/DrawdownChart";
 import MetricsTable from "@/components/MetricsTable";
 import AllocationTable from "@/components/AllocationTable";
 import AutoRefresh from "@/components/AutoRefresh";
 import StatusBadge from "@/components/StatusBadge";
-import type { BacktestManifest, RunDetail, SignalManifest } from "@/lib/types";
+import type {
+  BacktestManifest,
+  RunDetail,
+  RunSummary,
+  SignalManifest,
+} from "@/lib/types";
 import { formatMoneyDelta, formatPct, formatYi } from "@/lib/format";
 import { kindLabel } from "@/lib/labels";
 
@@ -23,12 +28,26 @@ export default async function RunPage({
   const failed = run.status === "failed";
 
   let manifest: unknown = null;
+  let linkedSignals: RunSummary[] = [];
+  let strategyRun: RunDetail | null = null;
   if (!inProgress && !failed) {
     try {
       manifest = await getManifest(id);
     } catch (err) {
-      // Manifest is missing on disk — render the run shell with a warning.
       manifest = { _error: err instanceof Error ? err.message : String(err) };
+    }
+    if (run.kind === "broad_index_backtest") {
+      try {
+        linkedSignals = await listLinkedSignals(id);
+      } catch {
+        // Endpoint missing or stale state — render without the section.
+      }
+    } else if (run.kind === "broad_index_signal" && run.strategy_id) {
+      try {
+        strategyRun = await getRun(run.strategy_id);
+      } catch {
+        // Parent strategy was deleted; show the id without a link.
+      }
     }
   }
 
@@ -41,9 +60,17 @@ export default async function RunPage({
       ) : failed ? (
         <ErrorPanel error={run.error ?? "(no error message recorded)"} />
       ) : run.kind === "broad_index_backtest" ? (
-        <BacktestView run={run.label} manifest={manifest as BacktestManifest} />
+        <BacktestView
+          run={run.label}
+          manifest={manifest as BacktestManifest}
+          linkedSignals={linkedSignals}
+        />
       ) : run.kind === "broad_index_signal" ? (
-        <SignalView manifest={manifest as SignalManifest} />
+        <SignalView
+          manifest={manifest as SignalManifest}
+          strategy={strategyRun}
+          rawStrategyId={run.strategy_id ?? null}
+        />
       ) : (
         <pre className="overflow-auto rounded border bg-white p-3 text-xs">
           {JSON.stringify(manifest, null, 2)}
@@ -97,7 +124,15 @@ function ErrorPanel({ error }: { error: string }) {
   );
 }
 
-function BacktestView({ run, manifest }: { run: string; manifest: BacktestManifest }) {
+function BacktestView({
+  run,
+  manifest,
+  linkedSignals,
+}: {
+  run: string;
+  manifest: BacktestManifest;
+  linkedSignals: RunSummary[];
+}) {
   const curve = manifest.curve ?? [];
   const benchmarkCurve = manifest.benchmark_curve ?? [];
   const benchmarkLabel = manifest.benchmark_label ?? "基准";
@@ -139,7 +174,63 @@ function BacktestView({ run, manifest }: { run: string; manifest: BacktestManife
           ]}
         />
       </section>
+      <LinkedSignals signals={linkedSignals} />
     </div>
+  );
+}
+
+function LinkedSignals({ signals }: { signals: RunSummary[] }) {
+  if (signals.length === 0) {
+    return (
+      <section>
+        <h2 className="text-sm font-medium mb-2 text-slate-700">调仓历史</h2>
+        <div className="rounded border bg-white p-3 text-sm text-slate-600">
+          尚未基于此策略生成过当日信号。在
+          <Link href="/signal" className="mx-1 text-blue-600 hover:underline">
+            生成当日信号
+          </Link>
+          页面选择本策略即可建立绑定。
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section>
+      <h2 className="text-sm font-medium mb-2 text-slate-700">
+        调仓历史（{signals.length}）
+      </h2>
+      <div className="overflow-auto rounded border bg-white">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="px-3 py-2 text-left">名称</th>
+              <th className="px-3 py-2 text-left">截至日期</th>
+              <th className="px-3 py-2 text-left">创建时间</th>
+              <th className="px-3 py-2 text-left">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {signals.map((s) => (
+              <tr key={s.id} className="border-t">
+                <td className="px-3 py-2">
+                  <Link
+                    href={`/runs/${s.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {s.label}
+                  </Link>
+                </td>
+                <td className="px-3 py-2 text-slate-700">{s.as_of_date ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-700">
+                  {s.created_at.slice(0, 10)}
+                </td>
+                <td className="px-3 py-2 text-slate-700">{s.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -152,9 +243,32 @@ const ACTION_LABELS: Record<string, string> = {
   close: "清仓",
 };
 
-function SignalView({ manifest }: { manifest: SignalManifest }) {
+function SignalView({
+  manifest,
+  strategy,
+  rawStrategyId,
+}: {
+  manifest: SignalManifest;
+  strategy: RunDetail | null;
+  rawStrategyId: string | null;
+}) {
   return (
     <div className="space-y-4">
+      {(strategy || rawStrategyId) && (
+        <section className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          <span className="font-medium">基于策略：</span>{" "}
+          {strategy ? (
+            <Link
+              href={`/runs/${strategy.id}`}
+              className="text-blue-600 hover:underline"
+            >
+              {strategy.label}
+            </Link>
+          ) : (
+            <span className="font-mono text-xs">{rawStrategyId}</span>
+          )}
+        </section>
+      )}
       <section className="grid grid-cols-3 gap-3">
         <Card label="截至日期" value={manifest.as_of} />
         <Card label="总规模" value={formatYi(manifest.total_aum_cny)} />

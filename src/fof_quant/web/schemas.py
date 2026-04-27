@@ -14,6 +14,7 @@ class RunSummary(BaseModel):
     created_at: str
     output_dir: str
     error: str | None = None
+    strategy_id: str | None = None
 
 
 class RunDetail(RunSummary):
@@ -46,6 +47,10 @@ class CreateRunRequest(BaseModel):
 
 class BroadIndexSignalParams(BaseModel):
     label: str | None = None
+    strategy_id: str | None = Field(
+        default=None,
+        description="Backtest run id this signal is tied to (for change history).",
+    )
     holdings: dict[str, Any] | None = Field(
         default=None,
         description=(

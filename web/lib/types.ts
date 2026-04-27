@@ -15,6 +15,7 @@ export type RunSummary = {
   created_at: string;
   output_dir: string;
   error?: string | null;
+  strategy_id?: string | null;
 };
 
 export type RunDetail = RunSummary & {
@@ -134,6 +135,7 @@ export type CurrentHoldings = {
 
 export type BroadIndexSignalParams = {
   label?: string | null;
+  strategy_id?: string | null;
   holdings?: CurrentHoldings | null;
   initial_cash_if_empty: number;
   sleeve_weights?: Record<string, number> | null;
