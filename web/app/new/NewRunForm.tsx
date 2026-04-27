@@ -20,14 +20,17 @@ type FormState = BroadIndexBacktestParams & {
   sleeve_weights_json: string;
 };
 
+// UI percentages: cash_buffer / max_weight are entered as 1.0 / 40 instead of
+// 0.01 / 0.4 so the form matches Chinese financial-form convention. We divide
+// by 100 before sending to the API.
 const INITIAL_STATE: FormState = {
   start_date: DEFAULT_START,
   end_date: TODAY,
   initial_cash: 1_000_000,
   sleeve_weights: null,
   sleeve_weights_json: JSON.stringify(DEFAULT_SLEEVE_WEIGHTS, null, 2),
-  cash_buffer: 0.01,
-  max_weight: 0.4,
+  cash_buffer: 1, // 1%
+  max_weight: 40, // 40%
   abs_band_pp: 5,
   rel_band_pct: 25,
   transaction_cost_bps: 2,
@@ -68,8 +71,9 @@ export default function NewRunForm() {
         sleeve_weights_json: sleeves
           ? JSON.stringify(sleeves, null, 2)
           : form.sleeve_weights_json,
-        cash_buffer: params.cash_buffer,
-        max_weight: params.max_weight,
+        // LLM returns fractions; UI shows percents.
+        cash_buffer: Number((params.cash_buffer * 100).toFixed(2)),
+        max_weight: Number((params.max_weight * 100).toFixed(2)),
         abs_band_pp: params.abs_band_pp,
         rel_band_pct: params.rel_band_pct,
         transaction_cost_bps: params.transaction_cost_bps,
@@ -107,8 +111,8 @@ export default function NewRunForm() {
           end_date: form.end_date,
           initial_cash: Number(form.initial_cash),
           sleeve_weights: sleeves,
-          cash_buffer: Number(form.cash_buffer),
-          max_weight: Number(form.max_weight),
+          cash_buffer: Number(form.cash_buffer) / 100,
+          max_weight: Number(form.max_weight) / 100,
           abs_band_pp: Number(form.abs_band_pp),
           rel_band_pct: Number(form.rel_band_pct),
           transaction_cost_bps: Number(form.transaction_cost_bps),
@@ -192,21 +196,23 @@ export default function NewRunForm() {
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="现金缓冲比例">
+        <Field label="现金缓冲（%）">
           <input
             type="number"
             min={0}
-            step="0.001"
+            max={99.99}
+            step="0.1"
             value={form.cash_buffer}
             onChange={(e) => update("cash_buffer", Number(e.target.value))}
             className="w-full rounded border px-2 py-1"
           />
         </Field>
-        <Field label="单只 ETF 最大权重">
+        <Field label="单只 ETF 最大权重（%）">
           <input
             type="number"
-            min={0}
-            step="0.01"
+            min={1}
+            max={100}
+            step="1"
             value={form.max_weight}
             onChange={(e) => update("max_weight", Number(e.target.value))}
             className="w-full rounded border px-2 py-1"
