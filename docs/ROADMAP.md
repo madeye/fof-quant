@@ -96,7 +96,7 @@
 - Emit a trade list (notional + share counts at last NAV/close) and a JSON manifest alongside the existing Excel/HTML report.
 - Keep the formal stock-through `pipeline.py` path untouched until Phase 2 has a real stock-factor source.
 
-**Status:** Done. `pipeline_broad_index.run_broad_index_pipeline` plus `portfolio.holdings` / `portfolio.rebalance` deliver the operational signal; walk-forward backtest, sleeve attribution, and Chinese Excel/HTML reports landed on top. Stock-through `pipeline.py` remains intentionally pass-through pending Phase 2.
+**Status:** Done. `pipeline_broad_index.run_broad_index_pipeline` plus `portfolio.holdings` / `portfolio.rebalance` deliver the operational signal; walk-forward backtest, sleeve attribution, and Chinese Excel/HTML reports landed on top. The formal stock-through `pipeline.py` is now cache-driven via `pipeline_inputs.load_pipeline_inputs` and runs alongside it.
 
 **Exit criteria:** `fof-quant pipeline broad-index --current holdings.json -c configs/broad_index.yaml` produces an Excel + manifest with a non-empty trade list and explicit constraint checks.
 
