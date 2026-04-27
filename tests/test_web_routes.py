@@ -417,6 +417,129 @@ def test_signal_rejects_unknown_strategy_id(
     assert "strategy_id" in response.json()["detail"]
 
 
+def test_delete_run_drops_registry_and_per_run_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal",
+        lambda **kwargs: None,
+    )
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        body = client.post("/api/runs/signal", json={}).json()
+        run_id = body["id"]
+        run_dir = reports_dir / run_id
+        # The route created the per-run subdir before kicking off the executor.
+        (run_dir / "manifest.json").write_text("{}", encoding="utf-8")
+        assert run_dir.is_dir()
+        assert client.get(f"/api/runs/{run_id}").status_code == 200
+
+        del_resp = client.delete(f"/api/runs/{run_id}")
+        assert del_resp.status_code == 204
+        assert client.get(f"/api/runs/{run_id}").status_code == 404
+        assert not run_dir.exists()
+
+
+def test_delete_unknown_run_returns_404(client: TestClient) -> None:
+    response = client.delete("/api/runs/deadbeef")
+    assert response.status_code == 404
+
+
+def test_delete_legacy_run_does_not_remove_shared_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scanned (CLI) runs land in reports/<bucket>/ alongside siblings; the
+    delete must drop the registry row but leave the directory intact."""
+    reports_dir = tmp_path / "reports" / "broad_index"
+    reports_dir.mkdir(parents=True)
+    (reports_dir / "broad_index_backtest_20240331.json").write_text(
+        json.dumps({"metrics": {}, "rebalances": [], "curve": []}),
+        encoding="utf-8",
+    )
+    (reports_dir / "broad_index_backtest_20240331.html").write_text(
+        "<html/>", encoding="utf-8"
+    )
+    app = create_app(
+        reports_dir=reports_dir, db_path=tmp_path / "runs.db", scan_on_boot=True
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        assert client.delete(f"/api/runs/{run_id}").status_code == 204
+        assert client.get(f"/api/runs/{run_id}").status_code == 404
+    # Manifest + HTML still on disk; only the registry row is gone.
+    assert (reports_dir / "broad_index_backtest_20240331.json").exists()
+    assert (reports_dir / "broad_index_backtest_20240331.html").exists()
+    _ = monkeypatch  # unused; keep signature for parity with neighbours
+
+
+def test_delete_backtest_with_cascade_drops_linked_signals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_backtest",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal",
+        lambda **kwargs: None,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        cache_dir=tmp_path / "cache",
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        bt = client.post(
+            "/api/runs",
+            json={
+                "kind": "broad_index_backtest",
+                "params": {
+                    "start_date": "2024-01-02",
+                    "end_date": "2024-06-28",
+                    "initial_cash": 1_000_000,
+                },
+            },
+        ).json()
+        signal = client.post(
+            "/api/runs/signal",
+            json={"params": {"strategy_id": bt["id"]}},
+        ).json()
+
+        # Without cascade the signal sticks around (with a now-stale link).
+        client.delete(f"/api/runs/{bt['id']}")
+        assert client.get(f"/api/runs/{signal['id']}").status_code == 200
+        assert client.get(f"/api/runs/{bt['id']}").status_code == 404
+
+        # New backtest + new signal — this time cascade.
+        bt2 = client.post(
+            "/api/runs",
+            json={
+                "kind": "broad_index_backtest",
+                "params": {
+                    "start_date": "2024-01-02",
+                    "end_date": "2024-06-28",
+                    "initial_cash": 1_000_000,
+                },
+            },
+        ).json()
+        signal2 = client.post(
+            "/api/runs/signal",
+            json={"params": {"strategy_id": bt2["id"]}},
+        ).json()
+        del_resp = client.delete(f"/api/runs/{bt2['id']}?cascade_signals=true")
+        assert del_resp.status_code == 204
+        assert client.get(f"/api/runs/{signal2['id']}").status_code == 404
+
+
 def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
     response = client.post(
         "/api/runs",

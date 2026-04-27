@@ -125,6 +125,12 @@ class RunRegistry:
             )
             return [_row_to_record(row) for row in cur.fetchall()]
 
+    def delete(self, run_id: str) -> bool:
+        with closing(self._connect()) as conn:
+            cur = conn.execute("DELETE FROM runs WHERE id = ?", (run_id,))
+            conn.commit()
+            return cur.rowcount > 0
+
     def update_status(
         self,
         run_id: str,
