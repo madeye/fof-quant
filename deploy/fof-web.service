@@ -1,0 +1,18 @@
+[Unit]
+Description=fof-quant web (Next.js)
+After=network.target fof-api.service
+
+[Service]
+Type=simple
+User=fof
+WorkingDirectory=/home/fof/app/web
+EnvironmentFile=/home/fof/app/web/.env.local
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/pnpm exec next start -H 127.0.0.1 -p 3001
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
