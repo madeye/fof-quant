@@ -18,7 +18,7 @@ The first version is intentionally non-interactive: analysts run CLI commands, r
 
 - No live trading, order routing, or brokerage integration.
 - No intraday strategy or real-time quote dependency in v1.
-- No interactive Web dashboard in v1.
+- No interactive Web dashboard in v1; v1.1 introduces a read-only dashboard that reads existing CLI artifacts without altering core calculations.
 - No LLM-based portfolio construction, factor calculation, or trading decision logic.
 - No modification of `../china-stock-multifactor`; it may be used only as a reference project.
 
@@ -88,6 +88,7 @@ The first version is intentionally non-interactive: analysts run CLI commands, r
 - Include configuration summary, data coverage, ETF universe, rankings, target allocation, backtest metrics, charts, and risk notes.
 - Make optional LLM explanations clearly labeled as narrative assistance, not investment advice or calculation inputs.
 - Ensure reports can be regenerated from the same config and cache state.
+- The HTML report remains the canonical per-run artifact; the v1.1 web dashboard is a review-and-compare surface layered on top of these artifacts and never mutates the underlying JSON manifests, Excel workbooks, or HTML reports.
 
 ## 7. Quality Requirements
 
@@ -113,4 +114,4 @@ The first version is intentionally non-interactive: analysts run CLI commands, r
 - ETF holdings disclosure lag must be modeled conservatively to avoid look-ahead bias.
 - Index constituent and weight data may require provider-specific normalization.
 - The exact broad-index ETF universe definition should remain configurable.
-- Future Web dashboard requirements should be validated after CLI/report workflows stabilize.
+- v1.1 web dashboard scope is locked to a read-only run registry + single-run detail + 2-way compare. Experiment trigger UI is v1.2 (Phase 7.1); sweep heatmap is v1.3 (Phase 7.2). See ROADMAP.md.

@@ -12,6 +12,20 @@
 > over the full A-share universe is expensive). Engine-level boxes
 > below describe the code in place and remain valid.
 
+## Web Dashboard (Phase 7 v1.1)
+
+- [ ] Add `[project.optional-dependencies] web = [...]` group to `pyproject.toml` (fastapi, uvicorn, httpx).
+- [ ] FastAPI app + SQLite registry under `src/fof_quant/web/` (`app.py`, `registry.py`, `schemas.py`, `routes/runs.py`).
+- [ ] Boot-time scanner ingests existing `reports/` artifacts (`scanner.py`).
+- [ ] Endpoints: `GET /api/health`, `GET /api/runs`, `GET /api/runs/{id}`, `GET /api/runs/{id}/manifest`, `GET /api/runs/{id}/report`, `POST /api/runs/scan`.
+- [ ] `fof-quant web serve` CLI command (Typer subcommand).
+- [ ] Next.js (App Router, TS, ECharts) skeleton under `web/` with Tailwind + pnpm.
+- [ ] `/` run list page; multi-select → Compare button (enabled when 2 selected).
+- [ ] `/runs/[id]` detail page (NAV chart, drawdown chart, metrics table, allocation, link to original HTML report).
+- [ ] `/compare?ids=a,b` two-strategy view (one NAV chart with both series, side-by-side metrics + allocation diff).
+- [ ] CI split: `python` and `web` jobs with `paths:` filters in `.github/workflows/ci.yml`.
+- [ ] Tests: `tests/test_web_registry.py` (scan fixture artifacts) + `tests/test_web_routes.py` (`httpx.AsyncClient` against the app).
+
 ## Operational Pipeline (broad-index)
 
 - [x] Take a current-holdings file (`holdings.json`) as input.
