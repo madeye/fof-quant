@@ -1,0 +1,20 @@
+[Unit]
+Description=fof-quant API (uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=fof
+WorkingDirectory=/home/fof/app
+Environment=PATH=/home/fof/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/fof/.local/bin/uv run fof-quant web serve \
+    --host 127.0.0.1 \
+    --port 8001 \
+    --reports-dir /home/fof/app/reports/broad_index \
+    --broad-index-cache-dir /home/fof/app/cache/broad_index \
+    --db /home/fof/app/runs/runs.db
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
