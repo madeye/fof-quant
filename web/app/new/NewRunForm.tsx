@@ -181,8 +181,8 @@ export default function NewRunForm() {
         <Field label="初始资金（元）">
           <input
             type="number"
-            min={1}
-            step="1000"
+            min={1000}
+            step={1000}
             value={form.initial_cash}
             onChange={(e) => update("initial_cash", Number(e.target.value))}
             className="w-full rounded border px-2 py-1"
