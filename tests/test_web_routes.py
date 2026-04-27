@@ -224,6 +224,67 @@ def test_legacy_backtest_manifest_is_backfilled(
     assert abs(benchmark_curve[1]["nav"] - 1.01) < 1e-9
 
 
+def test_suggest_params_returns_validated_payload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fof_quant.web.schemas import BroadIndexBacktestParams
+
+    fake = BroadIndexBacktestParams(
+        start_date="2022-01-04",
+        end_date="2025-04-26",
+        initial_cash=500_000,
+        sleeve_weights={"中证A500": 0.5, "中证红利低波": 0.5},
+        cash_buffer=0.0,
+        max_weight=0.6,
+        abs_band_pp=4.0,
+        rel_band_pct=20.0,
+        transaction_cost_bps=2.0,
+        slippage_bps=1.0,
+        benchmark_label="沪深300",
+        label="低波防守",
+    )
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.suggest_backtest_params",
+        lambda env, user_prompt: fake,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/runs/suggest",
+            json={"prompt": "我想做一个稳健的低波回测，时间 3 年。"},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["params"]["label"] == "低波防守"
+    assert body["params"]["sleeve_weights"]["中证A500"] == 0.5
+
+
+def test_suggest_params_surfaces_llm_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fof_quant.web.llm_suggest import LLMSuggestionError
+
+    def _raise(env: object, user_prompt: str) -> object:
+        raise LLMSuggestionError("LLM 未配置：请先设置 LLM_API_KEY。")
+
+    monkeypatch.setattr("fof_quant.web.routes.runs.suggest_backtest_params", _raise)
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/runs/suggest", json={"prompt": "防守"})
+    assert response.status_code == 400
+    assert "LLM" in response.json()["detail"]
+
+
 def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
     response = client.post(
         "/api/runs",

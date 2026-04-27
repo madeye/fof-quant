@@ -1,4 +1,11 @@
-import type { CreateRunPayload, Manifest, RunDetail, RunSummary } from "./types";
+import type {
+  BroadIndexBacktestParams,
+  BroadIndexSignalParams,
+  CreateRunPayload,
+  Manifest,
+  RunDetail,
+  RunSummary,
+} from "./types";
 
 const BASE = process.env.FOF_API_BASE ?? "http://127.0.0.1:8000";
 
@@ -42,5 +49,25 @@ export async function createRun(payload: CreateRunPayload): Promise<RunSummary> 
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+export async function createSignalRun(
+  params: Partial<BroadIndexSignalParams> = {}
+): Promise<RunSummary> {
+  return fetchJson<RunSummary>("/api/runs/signal", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ params }),
+  });
+}
+
+export async function suggestParams(
+  prompt: string
+): Promise<{ params: BroadIndexBacktestParams }> {
+  return fetchJson<{ params: BroadIndexBacktestParams }>("/api/runs/suggest", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt }),
   });
 }

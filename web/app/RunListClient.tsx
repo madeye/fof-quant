@@ -52,6 +52,12 @@ export default function RunListClient({
         >
           + 新建实验
         </Link>
+        <Link
+          href="/signal"
+          className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700"
+        >
+          + 当日信号
+        </Link>
         <button
           onClick={refresh}
           disabled={refreshing}

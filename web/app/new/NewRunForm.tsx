@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createRun } from "@/lib/api";
+import { createRun, suggestParams } from "@/lib/api";
 import type { BroadIndexBacktestParams } from "@/lib/types";
 
 const DEFAULT_SLEEVE_WEIGHTS = {
@@ -41,9 +41,47 @@ export default function NewRunForm() {
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const onAiSuggest = async () => {
+    if (!aiPrompt.trim()) {
+      setAiError("请先描述实验意图。");
+      return;
+    }
+    setAiError(null);
+    setAiBusy(true);
+    try {
+      const { params } = await suggestParams(aiPrompt.trim());
+      const sleeves = params.sleeve_weights ?? null;
+      setForm({
+        ...form,
+        start_date: params.start_date,
+        end_date: params.end_date,
+        initial_cash: params.initial_cash,
+        sleeve_weights: sleeves,
+        sleeve_weights_json: sleeves
+          ? JSON.stringify(sleeves, null, 2)
+          : form.sleeve_weights_json,
+        cash_buffer: params.cash_buffer,
+        max_weight: params.max_weight,
+        abs_band_pp: params.abs_band_pp,
+        rel_band_pct: params.rel_band_pct,
+        transaction_cost_bps: params.transaction_cost_bps,
+        slippage_bps: params.slippage_bps,
+        benchmark_label: params.benchmark_label,
+        label: params.label ?? "",
+      });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -91,6 +129,32 @@ export default function NewRunForm() {
       onSubmit={onSubmit}
       className="space-y-4 rounded border bg-white p-4 max-w-3xl"
     >
+      <section className="rounded border border-blue-200 bg-blue-50 p-3 space-y-2">
+        <div className="text-sm font-medium text-blue-900">AI 辅助生成参数</div>
+        <textarea
+          rows={2}
+          value={aiPrompt}
+          onChange={(e) => setAiPrompt(e.target.value)}
+          placeholder="例如：稳健低波三年回测，强调中证红利低波；或：激进创业板倾斜五年。"
+          className="w-full rounded border px-2 py-1 text-sm"
+        />
+        {aiError && (
+          <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
+            {aiError}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onAiSuggest}
+          disabled={aiBusy}
+          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {aiBusy ? "正在生成…" : "AI 生成参数"}
+        </button>
+        <div className="text-xs text-slate-600">
+          需要在 .env 配置 LLM_API_KEY；生成结果仅作建议，提交前可自行调整。
+        </div>
+      </section>
       <div className="grid grid-cols-2 gap-3">
         <Field label="开始日期">
           <input
