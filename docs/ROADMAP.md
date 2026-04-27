@@ -100,16 +100,29 @@
 
 **Exit criteria:** `fof-quant pipeline broad-index --current holdings.json -c configs/broad_index.yaml` produces an Excel + manifest with a non-empty trade list and explicit constraint checks.
 
-## Phase 7: Future Web Dashboard
+## Phase 7: Web Dashboard (in progress)
 
+**Goal:** A localhost dashboard that lets analysts browse historical CLI runs and compare strategies side-by-side, without changing core calculation logic.
 
-**Goal:** Explore an interactive UI only after the CLI/report workflow is stable.
+The v1.1 cut focuses on review-only workflows; experiment trigger and sweep visualization are split into Phase 7.1 and 7.2 so the first ship is small and useful on its own.
 
-- Define dashboard use cases from real report review workflows.
-- Add pages for universe inspection, factor drill-down, allocation review, and backtest comparison.
-- Reuse the same calculation artifacts and APIs created for CLI reports.
-- Keep Web functionality separate from v1 acceptance criteria until requirements are validated.
+### Phase 7 v1.1 — Read-only registry + 2-way compare
 
-**Status:** Implemented as an artifact manifest for a future dashboard reader; no interactive dashboard is in v1.
+- FastAPI service under `src/fof_quant/web/` exposes a SQLite-backed run registry plus read-only endpoints (`GET /api/runs`, `GET /api/runs/{id}`, `/manifest`, `/report`). A boot-time scanner ingests existing `reports/` artifacts so historical CLI runs appear automatically.
+- Next.js (App Router, TypeScript, ECharts) app under `web/` with three pages: run list (`/`), single-run detail (`/runs/[id]`), 2-way compare (`/compare?ids=a,b`). Compare overlays two NAV curves on one chart with a side-by-side metrics + allocation diff table.
+- New CLI command `fof-quant web serve` boots the API (Next.js dev server is started separately during development).
+- CI splits into `python` and `web` jobs with `paths` filters.
 
-**Exit criteria:** A dashboard prototype can read existing artifacts without changing core calculation logic.
+**Status:** Plan approved (see `/Users/mlv/.claude/plans/monorepo-a-b-side-by-side-table-validated-codd.md`). Implementation in flight.
+
+**Exit criteria:** `fof-quant web serve` lists historical CLI runs at `/api/runs`; `/runs/[id]` renders NAV + drawdown + metrics for any backtest manifest; `/compare?ids=a,b` overlays two NAV series with a side-by-side metrics table and an allocation-diff table. The original HTML reports keep rendering unchanged and remain accessible via `/api/runs/{id}/report`.
+
+### Phase 7.1 — Trigger UI
+
+- `POST /api/runs` schedules a pipeline run via FastAPI background tasks.
+- "New run" form on the frontend; per-run output subdirs under `reports/<run_id>/` so concurrent runs don't clobber each other.
+
+### Phase 7.2 — Sweep heatmap
+
+- `analysis/sweep.py` emits a JSON sibling to its CSV output.
+- `/sweeps/[id]` page renders a scheme × band heatmap of total return / Sharpe / max drawdown.
