@@ -52,6 +52,7 @@ backtest_app = typer.Typer(help="Backtest commands.")
 report_app = typer.Typer(help="Report commands.")
 pipeline_app = typer.Typer(help="Pipeline commands.")
 analyze_app = typer.Typer(help="Analysis commands.")
+web_app = typer.Typer(help="Web dashboard commands.")
 app.add_typer(config_app, name="config")
 app.add_typer(data_app, name="data")
 app.add_typer(factors_app, name="factors")
@@ -61,6 +62,7 @@ app.add_typer(backtest_app, name="backtest")
 app.add_typer(report_app, name="report")
 app.add_typer(pipeline_app, name="pipeline")
 app.add_typer(analyze_app, name="analyze")
+app.add_typer(web_app, name="web")
 
 
 @app.callback()
@@ -524,6 +526,38 @@ def run_broad_index_command(
         typer.echo(f"HTML:     {artifacts.report.html_path}")
     if artifacts.llm_narrative:
         typer.echo("\nLLM narrative:\n" + artifacts.llm_narrative)
+
+
+@web_app.command("serve")
+def web_serve(
+    reports_dir: Annotated[
+        Path,
+        typer.Option("--reports-dir", help="Directory holding existing CLI artifacts."),
+    ] = Path("reports"),
+    db_path: Annotated[
+        Path,
+        typer.Option("--db", help="SQLite path for the run registry."),
+    ] = Path("runs/runs.db"),
+    host: Annotated[str, typer.Option(help="Bind host.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Bind port.")] = 8000,
+) -> None:
+    """Start the read-only web dashboard API.
+
+    The Next.js dev server (under web/) consumes this API; start it separately
+    with `pnpm --dir web dev`.
+    """
+    try:
+        import uvicorn
+    except ImportError as exc:  # pragma: no cover - import guard
+        typer.echo("fastapi/uvicorn not installed; run `uv sync --extra web` first.")
+        raise typer.Exit(code=1) from exc
+    from fof_quant.web.app import create_app
+
+    fastapi_app = create_app(reports_dir=reports_dir, db_path=db_path, scan_on_boot=True)
+    typer.echo(
+        f"Dashboard API: http://{host}:{port}  •  start the UI with: pnpm --dir web dev"
+    )
+    uvicorn.run(fastapi_app, host=host, port=port, log_level="info")
 
 
 def _config_summary(loaded: AppConfig) -> dict[str, object]:
