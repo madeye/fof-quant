@@ -294,3 +294,297 @@ def test_create_run_rejects_unknown_kind(client: TestClient) -> None:
         },
     )
     assert response.status_code == 422  # pydantic validation rejects unknown literal
+
+
+# ---------------------------------------------------------------------------
+# Listing / filtering / paging
+# ---------------------------------------------------------------------------
+
+
+def _seed_two_kinds(reports_dir: Path) -> None:
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    (reports_dir / "broad_index_backtest_20240331.json").write_text(
+        json.dumps({"metrics": {}, "rebalances": [], "curve": []}),
+        encoding="utf-8",
+    )
+    (reports_dir / "broad_index_rebalance_20240105.json").write_text(
+        json.dumps(
+            {
+                "as_of": "2024-01-05",
+                "total_aum_cny": 100_000.0,
+                "rebalance_lines": [],
+                "trade_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_list_runs_filters_by_kind(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    _seed_two_kinds(reports_dir)
+    app = create_app(
+        reports_dir=reports_dir, db_path=tmp_path / "runs.db", scan_on_boot=True
+    )
+    with TestClient(app) as client:
+        all_kinds = {r["kind"] for r in client.get("/api/runs").json()}
+        backtests = client.get("/api/runs?kind=broad_index_backtest").json()
+        signals = client.get("/api/runs?kind=broad_index_signal").json()
+    assert all_kinds == {"broad_index_backtest", "broad_index_signal"}
+    assert len(backtests) == 1
+    assert backtests[0]["kind"] == "broad_index_backtest"
+    assert len(signals) == 1
+    assert signals[0]["kind"] == "broad_index_signal"
+
+
+def test_list_runs_pagination(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    _seed_two_kinds(reports_dir)
+    app = create_app(
+        reports_dir=reports_dir, db_path=tmp_path / "runs.db", scan_on_boot=True
+    )
+    with TestClient(app) as client:
+        first = client.get("/api/runs?limit=1&offset=0").json()
+        second = client.get("/api/runs?limit=1&offset=1").json()
+    assert len(first) == 1
+    assert len(second) == 1
+    assert first[0]["id"] != second[0]["id"]
+
+
+# ---------------------------------------------------------------------------
+# Manifest / report error paths
+# ---------------------------------------------------------------------------
+
+
+def test_manifest_returns_410_when_file_deleted_underneath(client: TestClient) -> None:
+    summary = client.get("/api/runs").json()[0]
+    Path(summary["output_dir"], "broad_index_backtest_20240331.json").unlink()
+    response = client.get(f"/api/runs/{summary['id']}/manifest")
+    assert response.status_code == 410
+
+
+def test_report_returns_404_when_run_has_no_html(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    # Manifest only — no companion HTML.
+    (reports_dir / "broad_index_backtest_20240331.json").write_text(
+        json.dumps({"metrics": {}, "rebalances": [], "curve": []}),
+        encoding="utf-8",
+    )
+    app = create_app(
+        reports_dir=reports_dir, db_path=tmp_path / "runs.db", scan_on_boot=True
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        response = client.get(f"/api/runs/{run_id}/report")
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Signal trigger
+# ---------------------------------------------------------------------------
+
+
+def test_create_signal_run_writes_holdings_to_subdir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    captured: dict[str, object] = {}
+
+    # Stub the executor with a function that exercises the holdings.json
+    # write path that the real executor performs, so we can assert the
+    # file lands in the per-run subdir without needing the broad-index cache.
+    def fake_executor_with_io(**kwargs: object) -> None:
+        from fof_quant.web.registry import RunRegistry
+        from fof_quant.web.schemas import BroadIndexSignalParams
+
+        params = kwargs["params"]
+        output_dir = kwargs["output_dir"]
+        assert isinstance(params, BroadIndexSignalParams)
+        assert isinstance(output_dir, Path)
+        if params.holdings is not None:
+            (output_dir / "holdings.json").write_text(
+                json.dumps(params.holdings, ensure_ascii=False), encoding="utf-8"
+            )
+        registry = kwargs["registry"]
+        run_id = kwargs["run_id"]
+        assert isinstance(registry, RunRegistry)
+        assert isinstance(run_id, str)
+        registry.update_status(run_id, "completed")
+        captured["called"] = True
+
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal", fake_executor_with_io
+    )
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/runs/signal",
+            json={
+                "params": {
+                    "label": "smoke signal",
+                    "holdings": {
+                        "as_of": "2024-04-01",
+                        "cash_cny": 50_000,
+                        "positions": [{"ts_code": "510300.SH", "shares": 100_000}],
+                    },
+                    "initial_cash_if_empty": 1_000_000.0,
+                    "cash_buffer": 0.01,
+                    "max_weight": 0.4,
+                    "abs_band_pp": 5.0,
+                    "rel_band_pct": 25.0,
+                    "force_rebalance": False,
+                },
+            },
+        )
+    assert response.status_code == 202
+    body = response.json()
+    assert body["kind"] == "broad_index_signal"
+    assert body["label"] == "smoke signal"
+    assert captured.get("called") is True
+    persisted = reports_dir / body["id"] / "holdings.json"
+    assert persisted.exists()
+    assert json.loads(persisted.read_text(encoding="utf-8"))["cash_cny"] == 50_000
+
+
+def test_create_signal_run_uses_default_label(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "fof_quant.web.routes.runs.execute_broad_index_signal",
+        lambda **kwargs: None,
+    )
+    app = create_app(
+        reports_dir=tmp_path / "reports",
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=False,
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/runs/signal", json={})
+    assert response.status_code == 202
+    assert response.json()["label"] == "当日信号"
+
+
+# ---------------------------------------------------------------------------
+# Backfill edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_backfill_preserves_existing_benchmark_curve(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    # Manifest already carries benchmark_curve — backfill must not overwrite.
+    (reports_dir / "broad_index_backtest_20240105.json").write_text(
+        json.dumps(
+            {
+                "metrics": {},
+                "rebalances": [],
+                "curve": [
+                    {"trade_date": "2024-01-02", "nav": 1.0, "daily_return": 0, "drawdown": 0}
+                ],
+                "benchmark_curve": [
+                    {"trade_date": "2024-01-02", "nav": 9.99, "daily_return": 0, "drawdown": 0}
+                ],
+                "benchmark_label": "原始基准",
+            }
+        ),
+        encoding="utf-8",
+    )
+    # Series loader would return non-trivial data — but we should never call it.
+    called = {"loader": False}
+
+    def fake_loader(label: object, cache_dir: object) -> dict[date, float]:
+        called["loader"] = True
+        return {date(2024, 1, 2): 1234.0}
+
+    monkeypatch.setattr("fof_quant.web.backfill._benchmark_series", fake_loader)
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=True,
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        body = client.get(f"/api/runs/{run_id}/manifest").json()
+    assert body["benchmark_label"] == "原始基准"
+    assert body["benchmark_curve"][0]["nav"] == 9.99
+    assert called["loader"] is False
+
+
+def test_backfill_no_op_when_cache_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    (reports_dir / "broad_index_backtest_20240105.json").write_text(
+        json.dumps(
+            {
+                "metrics": {},
+                "rebalances": [],
+                "curve": [
+                    {"trade_date": "2024-01-02", "nav": 1.0, "daily_return": 0, "drawdown": 0}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "fof_quant.web.backfill._benchmark_series",
+        lambda label, cache_dir: {},
+    )
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=True,
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        body = client.get(f"/api/runs/{run_id}/manifest").json()
+    # No benchmark_curve added; route returns the manifest as-is.
+    assert "benchmark_curve" not in body or not body["benchmark_curve"]
+
+
+def test_backfill_skipped_for_signal_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    (reports_dir / "broad_index_rebalance_20240105.json").write_text(
+        json.dumps(
+            {
+                "as_of": "2024-01-05",
+                "total_aum_cny": 0.0,
+                "rebalance_lines": [],
+                "trade_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    called = {"loader": False}
+
+    def fake_loader(label: object, cache_dir: object) -> dict[date, float]:
+        called["loader"] = True
+        return {}
+
+    monkeypatch.setattr("fof_quant.web.backfill._benchmark_series", fake_loader)
+    app = create_app(
+        reports_dir=reports_dir,
+        broad_index_cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "runs.db",
+        scan_on_boot=True,
+    )
+    with TestClient(app) as client:
+        run_id = client.get("/api/runs").json()[0]["id"]
+        client.get(f"/api/runs/{run_id}/manifest")
+    assert called["loader"] is False  # only broad_index_backtest triggers backfill
