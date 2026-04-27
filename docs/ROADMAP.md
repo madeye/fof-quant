@@ -127,5 +127,8 @@ The v1.1 cut focuses on review-only workflows; experiment trigger and sweep visu
 
 ### Phase 7.2 — Sweep heatmap
 
-- `analysis/sweep.py` emits a JSON sibling to its CSV output.
-- `/sweeps/[id]` page renders a scheme × band heatmap of total return / Sharpe / max drawdown.
+- `analysis/sweep.py` now emits a JSON sibling (`sweep_<YYYYMMDD>.json`) alongside the CSV via `write_sweep_json`; the CLI `analyze sweep` command writes both.
+- The web scanner recognizes sweep manifests so they appear in the run list.
+- `/sweeps/[id]` page renders a scheme × band ECharts heatmap with a metric switcher (Sharpe / CAGR / Max DD / Calmar / Tracking Error / Avg Turnover) and a Top-10 leaderboard table.
+
+**Status:** Done.

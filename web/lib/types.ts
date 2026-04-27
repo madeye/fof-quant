@@ -1,8 +1,14 @@
 export type RunStatus = "queued" | "running" | "completed" | "failed" | string;
 
+export type RunKind =
+  | "broad_index_signal"
+  | "broad_index_backtest"
+  | "offline_pipeline"
+  | "sweep";
+
 export type RunSummary = {
   id: string;
-  kind: "broad_index_signal" | "broad_index_backtest" | "offline_pipeline";
+  kind: RunKind;
   label: string;
   as_of_date: string | null;
   status: RunStatus;
@@ -67,7 +73,35 @@ export type SignalManifest = {
   trade_count: number;
 };
 
-export type Manifest = BacktestManifest | SignalManifest | Record<string, unknown>;
+export type SweepRow = {
+  scheme: string;
+  band_pp: number;
+  final_nav: number;
+  cagr: number;
+  vol: number;
+  sharpe: number;
+  max_drawdown: number;
+  calmar: number;
+  tracking_error: number;
+  rebalances: number;
+  avg_turnover_pct: number;
+  total_cost_cny: number;
+};
+
+export type SweepManifest = {
+  start_date: string;
+  end_date: string;
+  schemes: string[];
+  bands_pp: number[];
+  rows: SweepRow[];
+  benchmark: Record<string, number> | null;
+};
+
+export type Manifest =
+  | BacktestManifest
+  | SignalManifest
+  | SweepManifest
+  | Record<string, unknown>;
 
 export type BroadIndexBacktestParams = {
   start_date: string;

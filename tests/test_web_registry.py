@@ -61,6 +61,32 @@ def test_scan_picks_up_signal_and_backtest(tmp_path: Path) -> None:
     assert backtest.report_html_path is None  # html not seeded for backtest
 
 
+def test_scan_picks_up_sweep_manifest(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir()
+    sweep_path = reports_dir / "sweep_20240331.json"
+    sweep_path.write_text(
+        json.dumps(
+            {
+                "start_date": "2024-01-02",
+                "end_date": "2024-03-31",
+                "schemes": ["balanced_5", "growth_tilt"],
+                "bands_pp": [3.0, 5.0],
+                "rows": [],
+                "benchmark": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    records = scan_reports_dir(reports_dir)
+
+    assert len(records) == 1
+    assert records[0].kind == "sweep"
+    assert records[0].as_of_date == "2024-03-31"
+    assert records[0].label.startswith("sweep ")
+
+
 def test_registry_upsert_is_idempotent(tmp_path: Path) -> None:
     reports_dir = tmp_path / "reports"
     _seed_artifacts(reports_dir)

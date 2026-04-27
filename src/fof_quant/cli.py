@@ -18,6 +18,7 @@ from fof_quant.analysis.sweep import (
     render_sweep_table,
     run_sweep,
     write_sweep_csv,
+    write_sweep_json,
 )
 from fof_quant.backtest.artifacts import write_backtest_result
 from fof_quant.backtest.engine import BacktestEngine
@@ -419,8 +420,16 @@ def analyze_sweep_command(
         slippage_bps=loaded.backtest.slippage_bps,
     )
     csv_path = write_sweep_csv(rows, loaded.reports.output_dir, end_date=end_date)
+    json_path = write_sweep_json(
+        rows,
+        loaded.reports.output_dir,
+        start_date=loaded.data.start_date,
+        end_date=end_date,
+        benchmark=benchmark,
+    )
     typer.echo(render_sweep_table(rows, benchmark, top=top))
     typer.echo(f"\nWrote CSV: {csv_path}")
+    typer.echo(f"Wrote JSON: {json_path}")
 
 
 @pipeline_app.command("broad-index")
