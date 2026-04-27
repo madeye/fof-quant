@@ -94,8 +94,8 @@ export default function SignalForm() {
         <div className="mb-1 text-slate-700">无持仓时的初始资金（元）</div>
         <input
           type="number"
-          min={1}
-          step="1000"
+          min={1000}
+          step={1000}
           value={initialCash}
           onChange={(e) => setInitialCash(Number(e.target.value))}
           className="w-full rounded border px-2 py-1"
