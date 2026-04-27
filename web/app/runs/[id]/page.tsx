@@ -101,23 +101,32 @@ function BacktestView({ run, manifest }: { run: string; manifest: BacktestManife
   const curve = manifest.curve ?? [];
   const benchmarkCurve = manifest.benchmark_curve ?? [];
   const benchmarkLabel = manifest.benchmark_label ?? "基准";
+  const hasBenchmark = benchmarkCurve.length > 0;
   const navSeries: { label: string; points: typeof curve }[] = [
     { label: run, points: curve },
   ];
-  if (benchmarkCurve.length > 0) {
+  if (hasBenchmark) {
     navSeries.push({ label: benchmarkLabel, points: benchmarkCurve });
+  }
+  const drawdownSeries: { label: string; points: typeof curve }[] = [
+    { label: run, points: curve },
+  ];
+  if (hasBenchmark) {
+    drawdownSeries.push({ label: benchmarkLabel, points: benchmarkCurve });
   }
   return (
     <div className="space-y-4">
       <section>
         <h2 className="text-sm font-medium mb-2 text-slate-700">
-          净值曲线{benchmarkCurve.length > 0 ? `（含 ${benchmarkLabel} 对比）` : ""}
+          净值曲线{hasBenchmark ? `（含 ${benchmarkLabel} 对比）` : ""}
         </h2>
         <NavChart series={navSeries} />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">回撤曲线</h2>
-        <DrawdownChart points={curve} />
+        <h2 className="text-sm font-medium mb-2 text-slate-700">
+          回撤曲线{hasBenchmark ? `（含 ${benchmarkLabel} 对比）` : ""}
+        </h2>
+        <DrawdownChart series={drawdownSeries} />
       </section>
       <section>
         <h2 className="text-sm font-medium mb-2 text-slate-700">绩效指标</h2>
