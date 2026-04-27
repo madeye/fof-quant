@@ -85,7 +85,7 @@
 
 **Exit criteria:** A full pipeline run creates complete Excel and HTML reports from cached data, with optional LLM text disabled by default.
 
-## Phase 6.5: Operational Pipeline (in progress)
+## Phase 6.5: Operational Pipeline
 
 **Goal:** Make `fof-quant pipeline ...` produce a real monthly rebalance signal from cached broad-index data, not from empty inputs.
 
@@ -96,7 +96,7 @@
 - Emit a trade list (notional + share counts at last NAV/close) and a JSON manifest alongside the existing Excel/HTML report.
 - Keep the formal stock-through `pipeline.py` path untouched until Phase 2 has a real stock-factor source.
 
-**Status:** Target-weight + drift module and `pipeline broad-index` CLI in flight on `feature/csi300-analysis`.
+**Status:** Done. `pipeline_broad_index.run_broad_index_pipeline` plus `portfolio.holdings` / `portfolio.rebalance` deliver the operational signal; walk-forward backtest, sleeve attribution, and Chinese Excel/HTML reports landed on top. Stock-through `pipeline.py` remains intentionally pass-through pending Phase 2.
 
 **Exit criteria:** `fof-quant pipeline broad-index --current holdings.json -c configs/broad_index.yaml` produces an Excel + manifest with a non-empty trade list and explicit constraint checks.
 

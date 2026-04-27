@@ -1,23 +1,23 @@
 # ETF FOF Implementation Checklist
 
-> **Status note (2026-04-26):** The boxes below describe the engine-level
-> code, which is in place. They do **not** mean each engine is wired into
-> a real end-to-end run via `fof-quant pipeline`. The `pipeline run` path
-> still feeds engines empty inputs; real value today flows through
-> `fof-quant analyze csi300` and `fof-quant analyze broad-index`. See
-> ROADMAP Phase 6.5 for the operational-pipeline milestone that closes
-> this gap.
+> **Status note (2026-04-27):** Phase 6.5 (operational broad-index
+> pipeline) is complete: `fof-quant pipeline broad-index` produces a
+> real rebalance signal, JSON manifest, and Chinese Excel/HTML report
+> from cached broad-index data. The formal stock-through `pipeline run`
+> path still feeds engines empty inputs and is parked behind Phase 2
+> (real stock-factor source). Engine-level boxes below describe the
+> code in place and remain valid.
 
 ## Operational Pipeline (broad-index)
 
-- [ ] Take a current-holdings file (`holdings.json`) as input.
-- [ ] Build target `AllocationPlan` from sleeve picks + sleeve weight map.
-- [ ] Compute drift (current vs target) per sleeve.
-- [ ] Apply band-rebalance rule (±5pp absolute, ±25% relative, semi-annual force).
-- [ ] Emit trade list (notional + share counts at last NAV/close).
-- [ ] Write JSON manifest + Excel/HTML report from the trade list.
-- [ ] Add `fof-quant pipeline broad-index --current holdings.json` CLI.
-- [ ] Add tests for drift math and band-rebalance edge cases.
+- [x] Take a current-holdings file (`holdings.json`) as input.
+- [x] Build target `AllocationPlan` from sleeve picks + sleeve weight map.
+- [x] Compute drift (current vs target) per sleeve.
+- [x] Apply band-rebalance rule (±5pp absolute, ±25% relative, semi-annual force).
+- [x] Emit trade list (notional + share counts at last NAV/close).
+- [x] Write JSON manifest + Excel/HTML report from the trade list.
+- [x] Add `fof-quant pipeline broad-index --current holdings.json` CLI.
+- [x] Add tests for drift math and band-rebalance edge cases.
 
 ## Repo Scaffold
 
