@@ -163,7 +163,10 @@ def create_run(
         raise HTTPException(status_code=400, detail=f"unsupported run kind {payload.kind}")
     registry = _registry(request)
     reports_dir = _reports_dir(request)
-    cache_dir = _cache_dir(request)
+    # broad_index backtests load via load_broad_index(cache_dir) which expects
+    # the broad-index cache layout (etf_basic / fund_nav / etf_daily / benchmarks).
+    # The generic --cache-dir tushare cache is irrelevant here.
+    cache_dir = _broad_index_cache_dir(request)
     run_id = _new_run_id()
     output_dir = reports_dir / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
