@@ -49,6 +49,44 @@ def test_tushare_provider_maps_request_to_api_params() -> None:
     ]
 
 
+class PerSymbolTushareClient:
+    """Returns one row per ts_code, mirroring fund_daily's single-code API."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict[str, object]]] = []
+
+    def query(self, api_name: str, **params: object) -> list[dict[str, Any]]:
+        self.calls.append((api_name, params))
+        ts_code = params["ts_code"]
+        assert isinstance(ts_code, str)
+        return [{"ts_code": ts_code, "trade_date": "20240102", "close": 3.5}]
+
+
+def test_tushare_provider_iterates_per_symbol_when_multiple() -> None:
+    client = PerSymbolTushareClient()
+    provider = TushareProvider(client, min_interval_seconds=0, sleep=lambda _: None)
+
+    table = provider.fetch(
+        DataRequest(
+            dataset="etf_daily",
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 31),
+            symbols=["510300.SH", "510500.SH", "159915.SZ"],
+        )
+    )
+
+    assert {row["ts_code"] for row in table.rows} == {
+        "510300.SH",
+        "510500.SH",
+        "159915.SZ",
+    }
+    assert [call[1]["ts_code"] for call in client.calls] == [
+        "510300.SH",
+        "510500.SH",
+        "159915.SZ",
+    ]
+
+
 def test_tushare_provider_rejects_unsupported_dataset() -> None:
     provider = TushareProvider(FakeTushareClient(), min_interval_seconds=0)
 

@@ -34,6 +34,18 @@ class TushareProvider:
 
     def fetch(self, request: DataRequest) -> DataTable:
         spec = dataset_spec(request.dataset)
+        if spec.symbol_field is not None and len(request.symbols) > 1:
+            rows: list[JsonRecord] = []
+            for symbol in request.symbols:
+                params = request_params(
+                    dataset=spec,
+                    start_date=request.start_date,
+                    end_date=request.end_date,
+                    symbols=[symbol],
+                    params=request.params,
+                )
+                rows.extend(self._query_with_retries(spec.tushare_api, params))
+            return normalize_rows(spec, rows)
         params = request_params(
             dataset=spec,
             start_date=request.start_date,
