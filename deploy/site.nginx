@@ -1,5 +1,5 @@
 server {
-    server_name fof.maxlv.net;
+    server_name example.com;
 
     client_max_body_size 32m;
 
@@ -17,19 +17,19 @@ server {
 
     listen [::]:443 ssl ipv6only=on; # managed by Certbot
     listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/fof.maxlv.net/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/fof.maxlv.net/privkey.pem; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
 
 server {
-    if ($host = fof.maxlv.net) {
+    if ($host = example.com) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
     listen 80;
     listen [::]:80;
-    server_name fof.maxlv.net;
+    server_name example.com;
     return 404; # managed by Certbot
 }
