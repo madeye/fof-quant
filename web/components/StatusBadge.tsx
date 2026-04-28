@@ -1,10 +1,10 @@
 import type { RunStatus } from "@/lib/types";
 
 const PALETTE: Record<string, string> = {
-  queued: "bg-slate-100 text-slate-700",
-  running: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
+  queued: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  running: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+  completed: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+  failed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
 const LABELS: Record<string, string> = {

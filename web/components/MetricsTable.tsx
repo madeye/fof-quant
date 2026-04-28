@@ -32,24 +32,24 @@ export default function MetricsTable({ columns }: { columns: MetricsColumn[] }) 
     columns.some((c) => c.metrics && k in c.metrics)
   );
   return (
-    <div className="overflow-auto rounded border bg-white">
-      <table className="min-w-full text-sm">
-        <thead className="bg-slate-100">
+    <div className="table-wrap">
+      <table className="data-table min-w-[520px]">
+        <thead>
           <tr>
-            <th className="px-3 py-2 text-left font-medium">指标</th>
+            <th>指标</th>
             {columns.map((c) => (
-              <th key={c.label} className="px-3 py-2 text-right font-medium">
+              <th key={c.label} className="max-w-48 text-right">
                 {c.label}
               </th>
             ))}
             {showDelta && (
-              <th className="px-3 py-2 text-right font-medium">差值（B − A）</th>
+              <th className="text-right">差值（B − A）</th>
             )}
           </tr>
         </thead>
         <tbody>
           {keys.map((key) => (
-            <tr key={key} className="border-t">
+            <tr key={key}>
               <td className="px-3 py-2">{metricLabel(key)}</td>
               {columns.map((c) => (
                 <td key={`${c.label}-${key}`} className="px-3 py-2 text-right tabular-nums">

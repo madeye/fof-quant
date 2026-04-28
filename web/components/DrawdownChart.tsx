@@ -41,8 +41,21 @@ export default function DrawdownChart({
         v == null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(2)}%`,
     },
     legend:
-      resolved.length > 1 ? { data: resolved.map((s) => s.label) } : undefined,
-    grid: { left: 50, right: 30, top: resolved.length > 1 ? 40 : 30, bottom: 40 },
+      resolved.length > 1
+        ? {
+            data: resolved.map((s) => s.label),
+            type: "scroll",
+            top: 0,
+            textStyle: { color: "#475569", fontSize: 12 },
+          }
+        : undefined,
+    grid: {
+      left: 42,
+      right: 18,
+      top: resolved.length > 1 ? 48 : 32,
+      bottom: 34,
+      containLabel: true,
+    },
     xAxis: { type: "category", data: allDates, boundaryGap: false },
     yAxis: {
       type: "value",
@@ -61,7 +74,16 @@ export default function DrawdownChart({
       };
     }),
   };
-  return <ReactECharts option={option} style={{ height: 220 }} notMerge />;
+  return (
+    <div className="panel p-2 sm:p-3">
+      <ReactECharts
+        className="w-full"
+        option={option}
+        style={{ height: "clamp(220px, 34vw, 280px)" }}
+        notMerge
+      />
+    </div>
+  );
 }
 
 function alignDrawdown(

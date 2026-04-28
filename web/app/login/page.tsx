@@ -17,27 +17,27 @@ export default async function LoginPage({
   const testLogin = isTestLoginEnabled();
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
+    <div className="flex min-h-[60vh] items-center justify-center py-8">
       <div className="w-full max-w-sm space-y-4">
         <form
           action={async () => {
             "use server";
             await signIn("google", { redirectTo: callbackUrl });
           }}
-          className="space-y-4 rounded border bg-white p-6 shadow-sm"
+          className="panel-pad space-y-4"
         >
-          <h1 className="text-lg font-semibold">登录 fof-quant 看板</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-lg font-semibold text-slate-950">登录 fof-quant 看板</h1>
+          <p className="text-sm leading-6 text-slate-600">
             仅允许白名单内的 Google 账号登录。
           </p>
           {errorMessage && (
-            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
               {errorMessage}
             </div>
           )}
           <button
             type="submit"
-            className="flex w-full items-center justify-center gap-2 rounded border bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
+            className="btn w-full"
           >
             <GoogleMark />
             使用 Google 账号登录
@@ -50,7 +50,7 @@ export default async function LoginPage({
               const token = String(formData.get("token") ?? "");
               await signIn("test-token", { token, redirectTo: callbackUrl });
             }}
-            className="space-y-3 rounded border border-amber-200 bg-amber-50 p-4 text-xs"
+            className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs"
           >
             <div className="font-medium text-amber-900">测试登录（仅开发用）</div>
             <input
@@ -59,11 +59,11 @@ export default async function LoginPage({
               required
               placeholder="AUTH_TEST_TOKEN"
               autoComplete="off"
-              className="w-full rounded border px-2 py-1 font-mono"
+              className="w-full font-mono"
             />
             <button
               type="submit"
-              className="w-full rounded bg-amber-700 px-3 py-1.5 text-white hover:bg-amber-800"
+              className="btn min-h-9 w-full border-amber-700 bg-amber-700 py-1.5 text-white hover:bg-amber-800"
             >
               使用 token 登录
             </button>

@@ -23,13 +23,18 @@ export default function NavChart({ series }: { series: NavSeries[] }) {
       valueFormatter: (v: number | null) =>
         v == null || !Number.isFinite(v) ? "—" : v.toFixed(4),
     },
-    legend: { data: series.map((s) => s.label) },
-    grid: { left: 50, right: 30, top: 40, bottom: 40 },
+    legend: {
+      data: series.map((s) => s.label),
+      type: "scroll",
+      top: 0,
+      textStyle: { color: "#475569", fontSize: 12 },
+    },
+    grid: { left: 42, right: 18, top: 48, bottom: 38, containLabel: true },
     xAxis: { type: "category", data: allDates, boundaryGap: false },
     yAxis: {
       type: "value",
       scale: true,
-      name: "归一化净值",
+      name: "净值",
       axisLabel: { formatter: (v: number) => v.toFixed(2) },
     },
     series: series.map((s) => ({
@@ -40,7 +45,16 @@ export default function NavChart({ series }: { series: NavSeries[] }) {
       data: alignAndNormalize(s.points, allDates),
     })),
   };
-  return <ReactECharts option={option} style={{ height: 360 }} notMerge />;
+  return (
+    <div className="panel p-2 sm:p-3">
+      <ReactECharts
+        className="w-full"
+        option={option}
+        style={{ height: "clamp(280px, 44vw, 360px)" }}
+        notMerge
+      />
+    </div>
+  );
 }
 
 function alignAndNormalize(

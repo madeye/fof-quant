@@ -11,24 +11,24 @@ export default function AllocationTable({ columns }: { columns: AllocationColumn
   ).sort();
   const showDelta = columns.length === 2;
   return (
-    <div className="overflow-auto rounded border bg-white">
-      <table className="min-w-full text-sm">
-        <thead className="bg-slate-100">
+    <div className="table-wrap">
+      <table className="data-table min-w-[420px]">
+        <thead>
           <tr>
-            <th className="px-3 py-2 text-left font-medium">ETF 代码</th>
+            <th>ETF 代码</th>
             {columns.map((c) => (
-              <th key={c.label} className="px-3 py-2 text-right font-medium">
+              <th key={c.label} className="text-right">
                 {c.label}
               </th>
             ))}
             {showDelta && (
-              <th className="px-3 py-2 text-right font-medium">差值</th>
+              <th className="text-right">差值</th>
             )}
           </tr>
         </thead>
         <tbody>
           {codes.map((code) => (
-            <tr key={code} className="border-t">
+            <tr key={code}>
               <td className="px-3 py-2 font-mono text-xs">{code}</td>
               {columns.map((c) => (
                 <td key={`${c.label}-${code}`} className="px-3 py-2 text-right tabular-nums">

@@ -131,19 +131,19 @@ export default function NewRunForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded border bg-white p-4 max-w-3xl"
+      className="form-card"
     >
-      <section className="rounded border border-blue-200 bg-blue-50 p-3 space-y-2">
+      <section className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
         <div className="text-sm font-medium text-blue-900">AI 辅助生成参数</div>
         <textarea
           rows={2}
           value={aiPrompt}
           onChange={(e) => setAiPrompt(e.target.value)}
           placeholder="例如：稳健低波三年回测，强调中证红利低波；或：激进创业板倾斜五年。"
-          className="w-full rounded border px-2 py-1 text-sm"
+          className="w-full text-sm"
         />
         {aiError && (
-          <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
             {aiError}
           </div>
         )}
@@ -151,7 +151,7 @@ export default function NewRunForm() {
           type="button"
           onClick={onAiSuggest}
           disabled={aiBusy}
-          className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-primary min-h-9 px-3 py-1.5 text-xs"
         >
           {aiBusy ? "正在生成…" : "AI 生成参数"}
         </button>
@@ -159,14 +159,14 @@ export default function NewRunForm() {
           需要在 .env 配置 LLM_API_KEY；生成结果仅作建议，提交前可自行调整。
         </div>
       </section>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="form-grid">
         <Field label="开始日期">
           <input
             type="date"
             required
             value={form.start_date}
             onChange={(e) => update("start_date", e.target.value)}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="结束日期">
@@ -175,7 +175,7 @@ export default function NewRunForm() {
             required
             value={form.end_date}
             onChange={(e) => update("end_date", e.target.value)}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="初始资金（元）">
@@ -185,7 +185,7 @@ export default function NewRunForm() {
             step={1000}
             value={form.initial_cash}
             onChange={(e) => update("initial_cash", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="基准名称">
@@ -193,7 +193,7 @@ export default function NewRunForm() {
             type="text"
             value={form.benchmark_label}
             onChange={(e) => update("benchmark_label", e.target.value)}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="现金缓冲（%）">
@@ -204,7 +204,7 @@ export default function NewRunForm() {
             step="0.1"
             value={form.cash_buffer}
             onChange={(e) => update("cash_buffer", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="单只 ETF 最大权重（%）">
@@ -215,7 +215,7 @@ export default function NewRunForm() {
             step="1"
             value={form.max_weight}
             onChange={(e) => update("max_weight", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="绝对偏离（pp）">
@@ -225,7 +225,7 @@ export default function NewRunForm() {
             step="0.5"
             value={form.abs_band_pp}
             onChange={(e) => update("abs_band_pp", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="相对偏离（%）">
@@ -235,7 +235,7 @@ export default function NewRunForm() {
             step="1"
             value={form.rel_band_pct}
             onChange={(e) => update("rel_band_pct", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="交易费率（bps）">
@@ -245,7 +245,7 @@ export default function NewRunForm() {
             step="0.5"
             value={form.transaction_cost_bps}
             onChange={(e) => update("transaction_cost_bps", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
         <Field label="滑点（bps）">
@@ -255,7 +255,7 @@ export default function NewRunForm() {
             step="0.5"
             value={form.slippage_bps}
             onChange={(e) => update("slippage_bps", Number(e.target.value))}
-            className="w-full rounded border px-2 py-1"
+            className="w-full"
           />
         </Field>
       </div>
@@ -265,7 +265,7 @@ export default function NewRunForm() {
           value={form.label ?? ""}
           onChange={(e) => update("label", e.target.value)}
           placeholder="留空将自动生成"
-          className="w-full rounded border px-2 py-1"
+          className="w-full"
         />
       </Field>
       <Field label="板块权重（JSON）">
@@ -273,26 +273,26 @@ export default function NewRunForm() {
           rows={6}
           value={form.sleeve_weights_json}
           onChange={(e) => update("sleeve_weights_json", e.target.value)}
-          className="w-full rounded border px-2 py-1 font-mono text-xs"
+          className="w-full font-mono text-xs"
         />
       </Field>
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="toolbar">
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-primary px-4"
         >
           {submitting ? "提交中…" : "开始回测"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="rounded border bg-white px-4 py-2 text-sm hover:bg-slate-100"
+          className="btn px-4"
         >
           取消
         </button>
@@ -304,7 +304,7 @@ export default function NewRunForm() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block text-sm">
-      <div className="mb-1 text-slate-700">{label}</div>
+      <div className="mb-1 font-medium text-slate-700">{label}</div>
       {children}
     </label>
   );

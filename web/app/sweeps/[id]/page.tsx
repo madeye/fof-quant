@@ -15,9 +15,9 @@ export default async function SweepPage({
   const [run, manifest] = await Promise.all([getRun(id), getManifest(id)]);
   if (run.kind !== "sweep") {
     return (
-      <div className="rounded border bg-white p-4 text-sm">
+      <div className="panel-pad text-sm leading-6">
         <p className="mb-2 font-medium">该实验不是参数扫描类型。</p>
-        <Link href={`/runs/${id}`} className="text-blue-600 hover:underline">
+        <Link href={`/runs/${id}`} className="text-link">
           以实验详情页打开 →
         </Link>
       </div>
@@ -26,13 +26,13 @@ export default async function SweepPage({
   const sweep = manifest as SweepManifest;
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline gap-3 flex-wrap">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline">
+        <Link href="/" className="text-link text-sm">
           ← 返回列表
         </Link>
-        <h1 className="text-xl font-semibold">{run.label}</h1>
+        <h1 className="break-words text-xl font-semibold text-slate-950">{run.label}</h1>
         <StatusBadge status={run.status} />
-        <span className="text-sm text-slate-500">
+        <span className="text-sm leading-6 text-slate-500">
           {sweep.start_date} → {sweep.end_date} · {sweep.schemes.length} 种方案
           × {sweep.bands_pp.length} 个区间
         </span>
