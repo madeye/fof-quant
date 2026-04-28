@@ -1,4 +1,6 @@
-# Production deployment (sf.maxlv.net → fof.maxlv.net)
+# Production deployment
+
+> Replace `<server>`, `<domain>`, and `<your-email>` below with your own host, public domain, and contact email.
 
 Single-server deployment of the dashboard behind nginx + Let's Encrypt + Cloudflare.
 
@@ -8,19 +10,19 @@ Single-server deployment of the dashboard behind nginx + Let's Encrypt + Cloudfl
 |---|---|---|
 | FastAPI service | `fof-api.service` (systemd, user `fof`) | `127.0.0.1:8001` |
 | Next.js service | `fof-web.service` (systemd, user `fof`) | `127.0.0.1:3001` |
-| nginx site | `/etc/nginx/sites-available/fof.maxlv.net` | `:443` (TLS) → `127.0.0.1:3001` |
+| nginx site | `/etc/nginx/sites-available/<domain>` | `:443` (TLS) → `127.0.0.1:3001` |
 | Code | `/home/fof/app/` (rsync target) | — |
 | Run registry | `/home/fof/app/runs/runs.db` (SQLite) | — |
 
 ## First-time setup
 
-Run from a workstation with SSH access to `root@sf.maxlv.net`:
+Run from a workstation with SSH access to `root@<server>`:
 
 ```bash
 # 1. Server prep
-ssh root@sf.maxlv.net 'useradd -m -s /bin/bash fof'
-ssh root@sf.maxlv.net 'sudo -u fof bash -lc "curl -LsSf https://astral.sh/uv/install.sh | sh"'
-ssh root@sf.maxlv.net 'mkdir -p /home/fof/app && chown fof:fof /home/fof/app'
+ssh root@<server> 'useradd -m -s /bin/bash fof'
+ssh root@<server> 'sudo -u fof bash -lc "curl -LsSf https://astral.sh/uv/install.sh | sh"'
+ssh root@<server> 'mkdir -p /home/fof/app && chown fof:fof /home/fof/app'
 
 # 2. Code transfer (run from the repo root locally)
 rsync -az \
@@ -29,52 +31,52 @@ rsync -az \
   --exclude='.env' --exclude='.env.local' \
   --exclude='runs/' --exclude='cache/csi300/' --exclude='cache/tushare/' \
   --exclude='reports/csi300/' --exclude='.DS_Store' --exclude='.claude/' \
-  ./ root@sf.maxlv.net:/home/fof/app/
-ssh root@sf.maxlv.net 'chown -R fof:fof /home/fof/app'
+  ./ root@<server>:/home/fof/app/
+ssh root@<server> 'chown -R fof:fof /home/fof/app'
 
 # 3. Build
-ssh root@sf.maxlv.net 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
-ssh root@sf.maxlv.net 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
 
 # 4. Production env (the dashboard secret + OAuth credentials)
-ssh root@sf.maxlv.net "cat > /home/fof/app/web/.env.local <<'EOF'
+ssh root@<server> "cat > /home/fof/app/web/.env.local <<'EOF'
 AUTH_SECRET=<openssl rand -base64 32>
-AUTH_URL=https://fof.maxlv.net
+AUTH_URL=https://<domain>
 AUTH_GOOGLE_ID=<client id>
 AUTH_GOOGLE_SECRET=<client secret>
-ALLOWED_USERS=max.c.lv@gmail.com
+ALLOWED_USERS=<your-email>
 FOF_API_BASE=http://127.0.0.1:8001
 EOF
 chown fof:fof /home/fof/app/web/.env.local && chmod 600 /home/fof/app/web/.env.local"
 
 # 5. systemd units
-scp deploy/fof-api.service deploy/fof-web.service root@sf.maxlv.net:/etc/systemd/system/
-ssh root@sf.maxlv.net 'mkdir -p /home/fof/app/runs && chown fof:fof /home/fof/app/runs
+scp deploy/fof-api.service deploy/fof-web.service root@<server>:/etc/systemd/system/
+ssh root@<server> 'mkdir -p /home/fof/app/runs && chown fof:fof /home/fof/app/runs
 systemctl daemon-reload
 systemctl enable --now fof-api fof-web'
 
 # 6. nginx site (HTTP only — certbot rewrites with HTTPS in step 7)
-scp deploy/fof.maxlv.net.nginx root@sf.maxlv.net:/etc/nginx/sites-available/fof.maxlv.net
-ssh root@sf.maxlv.net 'ln -sf /etc/nginx/sites-available/fof.maxlv.net /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx'
+scp deploy/<domain>.nginx root@<server>:/etc/nginx/sites-available/<domain>
+ssh root@<server> 'ln -sf /etc/nginx/sites-available/<domain> /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx'
 
-# 7. Let's Encrypt — Cloudflare must be DNS-only (grey cloud) for fof.maxlv.net during this step.
-ssh root@sf.maxlv.net 'certbot --nginx -d fof.maxlv.net --non-interactive --agree-tos -m max.c.lv@gmail.com --redirect'
+# 7. Let's Encrypt — Cloudflare must be DNS-only (grey cloud) for <domain> during this step.
+ssh root@<server> 'certbot --nginx -d <domain> --non-interactive --agree-tos -m <your-email> --redirect'
 # Then re-enable Cloudflare proxy (orange cloud) with SSL mode = Full.
 ```
 
-The deploy/fof.maxlv.net.nginx file in this repo is the post-certbot version (with both HTTP→HTTPS redirect and the SSL block). If you start from scratch, `certbot --nginx` will mutate a plain HTTP site into this layout automatically; ship the file in step 6 only as a starting reference.
+The deploy/<domain>.nginx file in this repo is the post-certbot version (with both HTTP→HTTPS redirect and the SSL block). If you start from scratch, `certbot --nginx` will mutate a plain HTTP site into this layout automatically; ship the file in step 6 only as a starting reference.
 
 ## Google OAuth
 
-Add `https://fof.maxlv.net/api/auth/callback/google` to the OAuth client's **Authorized redirect URIs** (Google Cloud Console → APIs & Services → Credentials → that client). The same client can serve both localhost dev and prod redirect URIs.
+Add `https://<domain>/api/auth/callback/google` to the OAuth client's **Authorized redirect URIs** (Google Cloud Console → APIs & Services → Credentials → that client). The same client can serve both localhost dev and prod redirect URIs.
 
 ## Updating
 
 ```bash
 # rsync new code, then:
-ssh root@sf.maxlv.net 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
-ssh root@sf.maxlv.net 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
-ssh root@sf.maxlv.net 'systemctl restart fof-api fof-web'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
+ssh root@<server> 'systemctl restart fof-api fof-web'
 ```
 
 ## Logs
