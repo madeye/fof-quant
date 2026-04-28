@@ -56,8 +56,13 @@ export default function SignalForm() {
   const [backtests, setBacktests] = useState<RunSummary[]>([]);
   const [pickedBacktestId, setPickedBacktestId] = useState<string>("");
   const [pickError, setPickError] = useState<string | null>(null);
+  const [signals, setSignals] = useState<RunSummary[]>([]);
+  const [pickedSignalId, setPickedSignalId] = useState<string>("");
+  // strategy_id inherited from the picked previous signal (when one is picked).
+  // Falls back to pickedBacktestId on submit so the chain stays bound.
+  const [inheritedStrategyId, setInheritedStrategyId] = useState<string | null>(null);
 
-  // Load completed backtests once on mount.
+  // Load completed backtests + signals once on mount.
   useEffectOnce(() => {
     (async () => {
       try {
@@ -67,49 +72,94 @@ export default function SignalForm() {
             (r) => r.kind === "broad_index_backtest" && r.status === "completed"
           )
         );
+        setSignals(
+          runs.filter(
+            (r) => r.kind === "broad_index_signal" && r.status === "completed"
+          )
+        );
       } catch (err) {
-        // Silent — picker will simply show "无可用回测".
+        // Silent — pickers will simply show "无可选项".
         console.warn("listRuns failed", err);
       }
     })();
   });
 
+  // Shared param copy used by both pickers. Reads sleeve_weights / band /
+  // cash-buffer / max-weight out of a run's saved config_yaml and writes them
+  // into the advanced-settings panel.
+  const copyParamsFromConfig = (configYaml: string | null | undefined) => {
+    if (!configYaml) return;
+    const config = JSON.parse(configYaml) as {
+      params?: {
+        sleeve_weights?: Record<string, number> | null;
+        cash_buffer?: number;
+        max_weight?: number;
+        abs_band_pp?: number;
+        rel_band_pct?: number;
+      };
+    };
+    const params = config.params ?? {};
+    setAdvanced((prev) => ({
+      sleeve_weights_json: params.sleeve_weights
+        ? JSON.stringify(params.sleeve_weights, null, 2)
+        : prev.sleeve_weights_json,
+      cash_buffer_pct:
+        typeof params.cash_buffer === "number"
+          ? Number((params.cash_buffer * 100).toFixed(2))
+          : prev.cash_buffer_pct,
+      max_weight_pct:
+        typeof params.max_weight === "number"
+          ? Number((params.max_weight * 100).toFixed(2))
+          : prev.max_weight_pct,
+      abs_band_pp: params.abs_band_pp ?? prev.abs_band_pp,
+      rel_band_pct: params.rel_band_pct ?? prev.rel_band_pct,
+    }));
+    setShowAdvanced(true);
+  };
+
   const onPickBacktest = async (runId: string) => {
     setPickedBacktestId(runId);
     setPickError(null);
     if (!runId) return;
+    // Picking a backtest clears any picked previous signal — they're
+    // mutually exclusive sources of the strategy binding.
+    setPickedSignalId("");
+    setInheritedStrategyId(null);
     try {
       const detail = await getRun(runId);
       if (!detail.config_yaml) {
         setPickError("该回测没有保存原始配置（可能由 CLI 触发）。");
         return;
       }
-      const config = JSON.parse(detail.config_yaml) as {
-        params?: {
-          sleeve_weights?: Record<string, number> | null;
-          cash_buffer?: number;
-          max_weight?: number;
-          abs_band_pp?: number;
-          rel_band_pct?: number;
-        };
-      };
-      const params = config.params ?? {};
-      setAdvanced((prev) => ({
-        sleeve_weights_json: params.sleeve_weights
-          ? JSON.stringify(params.sleeve_weights, null, 2)
-          : prev.sleeve_weights_json,
-        cash_buffer_pct:
-          typeof params.cash_buffer === "number"
-            ? Number((params.cash_buffer * 100).toFixed(2))
-            : prev.cash_buffer_pct,
-        max_weight_pct:
-          typeof params.max_weight === "number"
-            ? Number((params.max_weight * 100).toFixed(2))
-            : prev.max_weight_pct,
-        abs_band_pp: params.abs_band_pp ?? prev.abs_band_pp,
-        rel_band_pct: params.rel_band_pct ?? prev.rel_band_pct,
-      }));
-      setShowAdvanced(true);
+      copyParamsFromConfig(detail.config_yaml);
+      if (!label) setLabel(`基于 ${detail.label}`);
+    } catch (err) {
+      setPickError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onPickSignal = async (runId: string) => {
+    setPickedSignalId(runId);
+    setPickError(null);
+    if (!runId) {
+      setInheritedStrategyId(null);
+      return;
+    }
+    // Picking a previous signal clears any picked backtest — the new signal
+    // inherits the previous signal's strategy_id directly so the chain stays
+    // bound to the original backtest.
+    setPickedBacktestId("");
+    try {
+      const detail = await getRun(runId);
+      if (!detail.config_yaml) {
+        setPickError("该信号没有保存原始配置（可能由 CLI 触发）。");
+        return;
+      }
+      copyParamsFromConfig(detail.config_yaml);
+      // Inherit the picked signal's strategy_id so all signals stay bound to
+      // the same strategy (the original backtest). If the picked signal has
+      // none (one-off), leave inherited null.
+      setInheritedStrategyId(detail.strategy_id ?? null);
       if (!label) setLabel(`基于 ${detail.label}`);
     } catch (err) {
       setPickError(err instanceof Error ? err.message : String(err));
@@ -145,9 +195,16 @@ export default function SignalForm() {
           Object.entries(parsed).map(([k, v]) => [k, Number(v)])
         );
       }
+      // Strategy binding precedence:
+      //   1. previous signal picked → inherit its strategy_id (chain)
+      //   2. backtest picked → backtest id IS the strategy_id
+      //   3. neither → no strategy binding
+      const strategyId = pickedSignalId
+        ? inheritedStrategyId
+        : pickedBacktestId || null;
       const summary = await createSignalRun({
         label: label.trim() ? label.trim() : null,
-        strategy_id: pickedBacktestId || null,
+        strategy_id: strategyId,
         holdings,
         initial_cash_if_empty: Number(initialCash),
         sleeve_weights: sleeveWeights,
@@ -185,16 +242,40 @@ export default function SignalForm() {
             ))}
           </select>
         </div>
+        <div className="text-xs text-slate-600">
+          {backtests.length === 0
+            ? "暂无已完成的回测可供选择。"
+            : "选择一个已完成的回测，会复制其板块权重、调仓阈值等参数到下方高级设置；该回测的 ID 将作为新信号的策略归属。"}
+        </div>
+      </section>
+      <section className="space-y-3 rounded-lg border border-sky-200 bg-sky-50 p-3">
+        <div className="text-sm font-medium text-sky-900">基于已有信号</div>
+        <div className="flex items-start gap-2">
+          <select
+            value={pickedSignalId}
+            onChange={(e) => onPickSignal(e.target.value)}
+            className="min-w-0 flex-1 text-sm"
+          >
+            <option value="">-- 不基于已有信号 --</option>
+            {signals.map((sig) => (
+              <option key={sig.id} value={sig.id}>
+                {sig.label}（{sig.as_of_date ?? "—"}）
+                {sig.strategy_id ? "" : "（未绑定策略）"}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="text-xs text-slate-600">
+          {signals.length === 0
+            ? "暂无已完成的信号可供选择。"
+            : "选择一个已有信号会复制其参数，并继承该信号绑定的策略 ID（即原始回测），" +
+              "让多次发出的信号属于同一策略链。与上方「基于已有回测」二选一。"}
+        </div>
         {pickError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
             {pickError}
           </div>
         )}
-        <div className="text-xs text-slate-600">
-          {backtests.length === 0
-            ? "暂无已完成的回测可供选择。"
-            : "选择一个已完成的回测，会复制其板块权重、再平衡区间等参数到下方高级设置。"}
-        </div>
       </section>
       <label className="block text-sm">
         <div className="mb-1 font-medium text-slate-700">标签（可选）</div>
@@ -235,7 +316,7 @@ export default function SignalForm() {
           checked={forceRebalance}
           onChange={(e) => setForceRebalance(e.target.checked)}
         />
-        强制再平衡（忽略 ±5pp / ±25% 偏离阈值）
+        强制调仓（忽略 ±1pp / ±25% 偏离阈值）
       </label>
 
       <button

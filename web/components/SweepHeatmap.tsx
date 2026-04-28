@@ -73,7 +73,7 @@ export default function SweepHeatmap({
     xAxis: {
       type: "category",
       data: bands.map((b) => `${b}pp`),
-      name: "再平衡区间",
+      name: "调仓阈值",
       splitArea: { show: true },
     },
     yAxis: {

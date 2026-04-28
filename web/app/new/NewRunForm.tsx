@@ -13,6 +13,18 @@ const DEFAULT_SLEEVE_WEIGHTS = {
   "中证红利低波": 0.35,
 };
 
+// Chinese labels for the predefined sleeve schemes — shown in the bull/bear
+// dropdowns. Keep keys in sync with the SCHEMES map below.
+const SCHEME_LABELS: Record<string, string> = {
+  balanced_5: "balanced_5（均衡 5 板块）",
+  core_300_only: "core_300_only（沪深 300 单押）",
+  core_satellite: "core_satellite（核心-卫星）",
+  growth_tilt: "growth_tilt（成长倾斜）",
+  defensive: "defensive（防守）",
+  equal_5: "equal_5（等权 5 板块）",
+  dividend_heavy: "dividend_heavy（红利重仓）",
+};
+
 // Predefined sleeve schemes for the regime overlay's bull/bear inputs.
 // Mirrors fof_quant.analysis.sweep.SCHEMES; keep the two in sync.
 const SCHEMES: Record<string, Record<string, number>> = {
@@ -321,12 +333,13 @@ export default function NewRunForm() {
       </div>
       <section className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
         <div className="text-sm font-medium text-amber-900">
-          牛熊切换 (regime overlay)
+          牛熊切换信号
         </div>
         <div className="text-xs leading-5 text-amber-800">
-          开启后忽略上方的板块权重 JSON，按 SMA200 ±5%/3% 信号在牛市使用 bull-scheme、
-          熊市使用 bear-scheme。Walk-forward 验证：bull=equal_5 / bear=defensive 在
-          2022–2026 OOS 测试期 Sharpe 0.85 / Calmar 0.98。
+          开启后忽略上方的板块权重 JSON，按 200 日均线 ±5%/3% 滞回阈值信号，
+          牛市切换到牛市配方、熊市切换到熊市配方。滚动样本外验证：
+          牛市=equal_5 / 熊市=defensive 在 2022–2026 测试期夏普比率 0.85、
+          卡玛比率 0.98。
         </div>
         <div className="form-grid">
           <Field label="信号类型">
@@ -338,33 +351,33 @@ export default function NewRunForm() {
               className="w-full"
             >
               <option value="">关闭（使用静态板块权重）</option>
-              <option value="sma200">SMA200 + 5%/3% hysteresis</option>
+              <option value="sma200">200 日均线 + 5%/3% 滞回阈值</option>
             </select>
           </Field>
-          <Field label="Bull 配方">
+          <Field label="牛市配方">
             <select
               value={form.bull_scheme}
               disabled={form.regime_kind === ""}
               onChange={(e) => update("bull_scheme", e.target.value)}
               className="w-full disabled:bg-slate-100"
             >
-              {Object.keys(SCHEMES).map((name) => (
+              {Object.entries(SCHEMES).map(([name]) => (
                 <option key={name} value={name}>
-                  {name}
+                  {SCHEME_LABELS[name] ?? name}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Bear 配方">
+          <Field label="熊市配方">
             <select
               value={form.bear_scheme}
               disabled={form.regime_kind === ""}
               onChange={(e) => update("bear_scheme", e.target.value)}
               className="w-full disabled:bg-slate-100"
             >
-              {Object.keys(SCHEMES).map((name) => (
+              {Object.entries(SCHEMES).map(([name]) => (
                 <option key={name} value={name}>
-                  {name}
+                  {SCHEME_LABELS[name] ?? name}
                 </option>
               ))}
             </select>
