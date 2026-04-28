@@ -28,6 +28,7 @@ from fof_quant.data.broad_index import BroadIndexFetchResult, load_broad_index
 from fof_quant.env import llm_env
 from fof_quant.portfolio.holdings import CurrentPortfolio, load_holdings
 from fof_quant.portfolio.rebalance import RebalanceLine, compute_rebalance
+from fof_quant.portfolio.regime import RegimeProvider, Sma200HysteresisRegime
 from fof_quant.reports.broad_index_report import (
     ReportBundle,
     write_backtest_report,
@@ -196,8 +197,14 @@ def run_broad_index_backtest_pipeline(
     write_report: bool = True,
     explain_with_llm: bool = False,
     config_summary: dict[str, object] | None = None,
+    regime_kind: str | None = None,
+    bull_sleeve_weights: dict[str, float] | None = None,
+    bear_sleeve_weights: dict[str, float] | None = None,
 ) -> tuple[BroadIndexBacktest, Path, ReportBundle | None, str]:
     fetched = load_broad_index(cache_dir)
+    regime_provider: RegimeProvider | None = None
+    if regime_kind is not None:
+        regime_provider = _build_regime_provider(regime_kind, fetched, benchmark_label)
     backtest = run_broad_index_backtest(
         fetched,
         start_date=start_date,
@@ -211,6 +218,9 @@ def run_broad_index_backtest_pipeline(
         transaction_cost_bps=transaction_cost_bps,
         slippage_bps=slippage_bps,
         benchmark_label=benchmark_label,
+        regime_provider=regime_provider,
+        bull_sleeve_weights=bull_sleeve_weights,
+        bear_sleeve_weights=bear_sleeve_weights,
     )
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = _backtest_manifest(backtest, benchmark_label=benchmark_label)
@@ -341,3 +351,26 @@ def _json_default(value: object) -> object:
     if isinstance(value, date):
         return value.isoformat()
     raise TypeError(f"object of type {type(value)} is not JSON serializable")
+
+
+_SUPPORTED_REGIMES: tuple[str, ...] = ("sma200",)
+
+
+def _build_regime_provider(
+    kind: str,
+    fetched: BroadIndexFetchResult,
+    benchmark_label: str,
+) -> RegimeProvider:
+    if kind == "sma200":
+        spec = next((s for s in fetched.specs if s.label == benchmark_label), None)
+        if spec is None:
+            raise ValueError(f"Benchmark spec not found: {benchmark_label}")
+        bench_close: dict[date, float] = {}
+        for row in fetched.benchmarks.rows:
+            if str(row["ts_code"]) != spec.total_return_code:
+                continue
+            td = str(row["trade_date"])
+            d = date(int(td[:4]), int(td[4:6]), int(td[6:8]))
+            bench_close[d] = float(row["close"])
+        return Sma200HysteresisRegime(bench_close)
+    raise ValueError(f"Unsupported regime_kind: {kind!r}; supported: {_SUPPORTED_REGIMES}")
