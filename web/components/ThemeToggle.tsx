@@ -38,7 +38,7 @@ export default function ThemeToggle() {
       className="btn min-h-9 px-3 py-1.5"
       aria-label={theme === "dark" ? "切换到浅色主题" : "切换到深色主题"}
     >
-      <span>{theme === "dark" ? "Light" : "Dark"}</span>
+      <span>{theme === "dark" ? "浅色" : "深色"}</span>
     </button>
   );
 }

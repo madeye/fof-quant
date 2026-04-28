@@ -298,7 +298,7 @@ function SignalView({
         />
       </section>
       <section>
-        <h2 className="section-title">再平衡明细</h2>
+        <h2 className="section-title">调仓明细</h2>
         <div className="table-wrap">
           <table className="data-table min-w-[860px]">
             <thead>
