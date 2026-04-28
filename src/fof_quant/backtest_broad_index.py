@@ -18,6 +18,7 @@ from fof_quant.analysis.broad_index_allocation import (
 from fof_quant.backtest.metrics import PerformanceMetrics, calculate_metrics
 from fof_quant.backtest.schedule import rebalance_dates
 from fof_quant.data.broad_index import BroadIndexFetchResult
+from fof_quant.portfolio.regime import RegimeProvider
 
 
 @dataclass(frozen=True)
@@ -69,8 +70,17 @@ def run_broad_index_backtest(
     benchmark_label: str = "沪深300",
     semiannual_force_months: tuple[int, int] = (1, 7),
     pit_analysis_provider: Callable[[date], BroadIndexAnalysis | None] | None = None,
+    regime_provider: RegimeProvider | None = None,
+    bull_sleeve_weights: dict[str, float] | None = None,
+    bear_sleeve_weights: dict[str, float] | None = None,
 ) -> BroadIndexBacktest:
-    weights = sleeve_weights or DEFAULT_SLEEVE_WEIGHTS
+    static_weights = sleeve_weights or DEFAULT_SLEEVE_WEIGHTS
+    if regime_provider is not None and (
+        bull_sleeve_weights is None or bear_sleeve_weights is None
+    ):
+        raise ValueError(
+            "regime_provider requires both bull_sleeve_weights and bear_sleeve_weights"
+        )
     cost_rate = (transaction_cost_bps + slippage_bps) / 10_000
 
     nav_by_code, fund_listing = _index_nav_by_code(fetched)
@@ -137,10 +147,20 @@ def run_broad_index_backtest(
             if pit_analysis is None:
                 pit_analysis = _default_pit_analysis(fetched, pit_universe, d)
             current_sleeve_by_code.update(_sleeve_by_code_from_analysis(pit_analysis))
+            if regime_provider is not None:
+                # Bull/bear weights are required when regime_provider is set
+                # (validated above); the cast satisfies the type checker.
+                regime = regime_provider.signal_for_date(d)
+                rebalance_weights = (
+                    bull_sleeve_weights if regime == "bull" else bear_sleeve_weights
+                )
+                assert rebalance_weights is not None
+            else:
+                rebalance_weights = static_weights
             event = _rebalance(
                 d=d,
                 pit_analysis=pit_analysis,
-                weights=weights,
+                weights=rebalance_weights,
                 cash_buffer=cash_buffer,
                 max_weight=max_weight,
                 abs_band_pp=abs_band_pp,

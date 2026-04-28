@@ -481,6 +481,31 @@ def run_broad_index_command(
             ),
         ),
     ] = False,
+    regime: Annotated[
+        str | None,
+        typer.Option(
+            "--regime",
+            help=(
+                "Bull/bear regime overlay for backtest. 'sma200' = 200-day MA on the "
+                "benchmark with 5%/3% hysteresis, switching between --bull-scheme and "
+                "--bear-scheme each rebalance."
+            ),
+        ),
+    ] = None,
+    bull_scheme: Annotated[
+        str,
+        typer.Option(
+            "--bull-scheme",
+            help="Sleeve scheme used during bull regime (see analysis.sweep.SCHEMES).",
+        ),
+    ] = "equal_5",
+    bear_scheme: Annotated[
+        str,
+        typer.Option(
+            "--bear-scheme",
+            help="Sleeve scheme used during bear regime (see analysis.sweep.SCHEMES).",
+        ),
+    ] = "defensive",
     explain: Annotated[
         bool,
         typer.Option(
@@ -494,6 +519,7 @@ def run_broad_index_command(
     config_summary = _config_summary(loaded)
     if backtest:
         end_date = loaded.data.end_date or date.today()
+        bull_weights, bear_weights = _resolve_regime_sleeves(regime, bull_scheme, bear_scheme)
         result, manifest_path, report, _narrative = run_broad_index_backtest_pipeline(
             cache_dir=loaded.data.cache_dir,
             output_dir=loaded.reports.output_dir,
@@ -508,6 +534,9 @@ def run_broad_index_command(
             slippage_bps=loaded.backtest.slippage_bps,
             explain_with_llm=explain or loaded.reports.llm_explanations,
             config_summary=config_summary,
+            regime_kind=regime,
+            bull_sleeve_weights=bull_weights,
+            bear_sleeve_weights=bear_weights,
         )
         typer.echo(render_backtest_summary(result))
         typer.echo(f"\nManifest: {manifest_path}")
@@ -600,3 +629,26 @@ def _config_summary(loaded: AppConfig) -> dict[str, object]:
         "slippage_bps": loaded.backtest.slippage_bps,
         "llm_explanations": loaded.reports.llm_explanations,
     }
+
+
+def _resolve_regime_sleeves(
+    regime: str | None,
+    bull_scheme: str,
+    bear_scheme: str,
+) -> tuple[dict[str, float] | None, dict[str, float] | None]:
+    """Resolve --bull-scheme / --bear-scheme names into sleeve-weight dicts.
+
+    Returns (None, None) when --regime is not set; both dicts otherwise.
+    Raises typer.BadParameter on unknown scheme names.
+    """
+    if regime is None:
+        return None, None
+    if bull_scheme not in SCHEMES:
+        raise typer.BadParameter(
+            f"unknown --bull-scheme {bull_scheme!r}; choose from {sorted(SCHEMES)}"
+        )
+    if bear_scheme not in SCHEMES:
+        raise typer.BadParameter(
+            f"unknown --bear-scheme {bear_scheme!r}; choose from {sorted(SCHEMES)}"
+        )
+    return SCHEMES[bull_scheme], SCHEMES[bear_scheme]

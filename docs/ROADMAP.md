@@ -100,6 +100,22 @@
 
 **Exit criteria:** `fof-quant pipeline broad-index --current holdings.json -c configs/broad_index.yaml` produces an Excel + manifest with a non-empty trade list and explicit constraint checks.
 
+## Phase 6.6: Regime-Switch Overlay (optional)
+
+**Goal:** Let backtests switch between two sleeve-weight maps based on a bull/bear regime signal, without touching the rebalance engine for the static-weights path.
+
+- Add `portfolio/regime.py` with a `RegimeProvider` Protocol and a v1 `Sma200HysteresisRegime` implementation (200-day MA on the benchmark close, with 5%/3% entry/exit hysteresis and no look-ahead).
+- Extend `run_broad_index_backtest` with optional `regime_provider`, `bull_sleeve_weights`, `bear_sleeve_weights`. When `regime_provider` is `None` the engine behaves exactly as before.
+- Expose via `pipeline broad-index --backtest --regime sma200 --bull-scheme equal_5 --bear-scheme defensive`.
+- Walk-forward (8y cache split into 2018–2022 train / 2022–2026 test):
+  - FULL  (8y): static best 0.645 → regime overlay **0.760** (Calmar 0.78)
+  - TRAIN (4y): static best 0.802 → regime overlay 0.753 (regime adds nothing in clean cycles)
+  - TEST  (4y): static best 0.633 → regime overlay **0.845** (Calmar 0.98)
+
+**Status:** Implemented; default is OFF — users opt in with `--regime`. Multi-factor regime signals (volatility, breadth) and capital-flow signals (北向 / 两融) were prototyped and shown to add noise rather than signal in 2021–2026, so they are intentionally not productized.
+
+**Exit criteria:** `fof-quant pipeline broad-index --backtest -c configs/broad_index.yaml --regime sma200` produces an Excel + manifest using bull/bear sleeves, and existing static-weights behavior is bit-for-bit preserved when `--regime` is omitted.
+
 ## Phase 7: Web Dashboard (in progress)
 
 **Goal:** A localhost dashboard that lets analysts browse historical CLI runs and compare strategies side-by-side, without changing core calculation logic.
