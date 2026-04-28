@@ -38,6 +38,12 @@ class BroadIndexBacktestParams(BaseModel):
     slippage_bps: float = Field(default=1.0, ge=0.0)
     benchmark_label: str = "沪深300"
     label: str | None = None
+    # Optional bull/bear regime overlay. When regime_kind is set, the engine
+    # ignores sleeve_weights and uses bull_sleeve_weights / bear_sleeve_weights
+    # picked per rebalance by the signal. Both bull/bear maps must be provided.
+    regime_kind: Literal["sma200"] | None = None
+    bull_sleeve_weights: dict[str, float] | None = None
+    bear_sleeve_weights: dict[str, float] | None = None
 
 
 class CreateRunRequest(BaseModel):

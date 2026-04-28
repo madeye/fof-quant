@@ -20,11 +20,11 @@ const HOLDINGS_PLACEHOLDER = JSON.stringify(
 );
 
 const DEFAULT_SLEEVE_WEIGHTS = {
-  "中证A500": 0.35,
-  "中证1000": 0.20,
-  "创业板指": 0.15,
-  "科创50": 0.15,
-  "中证红利低波": 0.15,
+  "中证A500": 0.30,
+  "中证1000": 0.15,
+  "创业板指": 0.10,
+  "科创50": 0.10,
+  "中证红利低波": 0.35,
 };
 
 type Advanced = {
@@ -39,7 +39,7 @@ const DEFAULT_ADVANCED: Advanced = {
   sleeve_weights_json: JSON.stringify(DEFAULT_SLEEVE_WEIGHTS, null, 2),
   cash_buffer_pct: 1,
   max_weight_pct: 40,
-  abs_band_pp: 5,
+  abs_band_pp: 1,
   rel_band_pct: 25,
 };
 

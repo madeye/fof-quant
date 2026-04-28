@@ -6,18 +6,71 @@ import { createRun, suggestParams } from "@/lib/api";
 import type { BroadIndexBacktestParams } from "@/lib/types";
 
 const DEFAULT_SLEEVE_WEIGHTS = {
-  "中证A500": 0.35,
-  "中证1000": 0.20,
-  "创业板指": 0.15,
-  "科创50": 0.15,
-  "中证红利低波": 0.15,
+  "中证A500": 0.30,
+  "中证1000": 0.15,
+  "创业板指": 0.10,
+  "科创50": 0.10,
+  "中证红利低波": 0.35,
+};
+
+// Predefined sleeve schemes for the regime overlay's bull/bear inputs.
+// Mirrors fof_quant.analysis.sweep.SCHEMES; keep the two in sync.
+const SCHEMES: Record<string, Record<string, number>> = {
+  balanced_5: {
+    "中证A500": 0.35,
+    "中证1000": 0.20,
+    "创业板指": 0.15,
+    "科创50": 0.15,
+    "中证红利低波": 0.15,
+  },
+  core_300_only: { "沪深300": 1.00 },
+  core_satellite: {
+    "沪深300": 0.50,
+    "中证1000": 0.20,
+    "创业板指": 0.15,
+    "中证红利低波": 0.15,
+  },
+  growth_tilt: {
+    "中证A500": 0.20,
+    "中证1000": 0.20,
+    "创业板指": 0.30,
+    "科创50": 0.20,
+    "中证红利低波": 0.10,
+  },
+  defensive: {
+    "上证50": 0.30,
+    "中证A500": 0.30,
+    "中证红利低波": 0.30,
+    "中证1000": 0.10,
+  },
+  equal_5: {
+    "中证A500": 0.20,
+    "中证1000": 0.20,
+    "创业板指": 0.20,
+    "科创50": 0.20,
+    "中证红利低波": 0.20,
+  },
+  dividend_heavy: {
+    "中证A500": 0.30,
+    "中证1000": 0.15,
+    "创业板指": 0.10,
+    "科创50": 0.10,
+    "中证红利低波": 0.35,
+  },
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const DEFAULT_START = "2020-01-02";
 
-type FormState = BroadIndexBacktestParams & {
+type FormState = Omit<
+  BroadIndexBacktestParams,
+  "regime_kind" | "bull_sleeve_weights" | "bear_sleeve_weights"
+> & {
   sleeve_weights_json: string;
+  // UI uses "" for "no overlay"; submit-time code maps "" → null payload.
+  regime_kind: "" | "sma200";
+  bull_scheme: string;
+  bear_scheme: string;
 };
 
 // UI percentages: cash_buffer / max_weight are entered as 1.0 / 40 instead of
@@ -31,12 +84,15 @@ const INITIAL_STATE: FormState = {
   sleeve_weights_json: JSON.stringify(DEFAULT_SLEEVE_WEIGHTS, null, 2),
   cash_buffer: 1, // 1%
   max_weight: 40, // 40%
-  abs_band_pp: 5,
+  abs_band_pp: 1,
   rel_band_pct: 25,
   transaction_cost_bps: 2,
   slippage_bps: 1,
   benchmark_label: "沪深300",
   label: "",
+  regime_kind: "",
+  bull_scheme: "equal_5",
+  bear_scheme: "defensive",
 };
 
 export default function NewRunForm() {
@@ -104,6 +160,7 @@ export default function NewRunForm() {
           Object.entries(parsed).map(([k, v]) => [k, Number(v)])
         );
       }
+      const regimeOn = form.regime_kind === "sma200";
       const summary = await createRun({
         kind: "broad_index_backtest",
         params: {
@@ -119,6 +176,9 @@ export default function NewRunForm() {
           slippage_bps: Number(form.slippage_bps),
           benchmark_label: form.benchmark_label,
           label: form.label?.trim() ? form.label.trim() : null,
+          regime_kind: regimeOn ? "sma200" : null,
+          bull_sleeve_weights: regimeOn ? SCHEMES[form.bull_scheme] : null,
+          bear_sleeve_weights: regimeOn ? SCHEMES[form.bear_scheme] : null,
         },
       });
       router.push(`/runs/${summary.id}`);
@@ -259,6 +319,58 @@ export default function NewRunForm() {
           />
         </Field>
       </div>
+      <section className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div className="text-sm font-medium text-amber-900">
+          牛熊切换 (regime overlay)
+        </div>
+        <div className="text-xs leading-5 text-amber-800">
+          开启后忽略上方的板块权重 JSON，按 SMA200 ±5%/3% 信号在牛市使用 bull-scheme、
+          熊市使用 bear-scheme。Walk-forward 验证：bull=equal_5 / bear=defensive 在
+          2022–2026 OOS 测试期 Sharpe 0.85 / Calmar 0.98。
+        </div>
+        <div className="form-grid">
+          <Field label="信号类型">
+            <select
+              value={form.regime_kind}
+              onChange={(e) =>
+                update("regime_kind", e.target.value as FormState["regime_kind"])
+              }
+              className="w-full"
+            >
+              <option value="">关闭（使用静态板块权重）</option>
+              <option value="sma200">SMA200 + 5%/3% hysteresis</option>
+            </select>
+          </Field>
+          <Field label="Bull 配方">
+            <select
+              value={form.bull_scheme}
+              disabled={form.regime_kind === ""}
+              onChange={(e) => update("bull_scheme", e.target.value)}
+              className="w-full disabled:bg-slate-100"
+            >
+              {Object.keys(SCHEMES).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Bear 配方">
+            <select
+              value={form.bear_scheme}
+              disabled={form.regime_kind === ""}
+              onChange={(e) => update("bear_scheme", e.target.value)}
+              className="w-full disabled:bg-slate-100"
+            >
+              {Object.keys(SCHEMES).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </section>
       <Field label="实验名称（可选）">
         <input
           type="text"

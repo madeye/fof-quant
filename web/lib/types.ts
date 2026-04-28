@@ -146,6 +146,12 @@ export type BroadIndexBacktestParams = {
   slippage_bps: number;
   benchmark_label: string;
   label?: string | null;
+  // Optional bull/bear regime overlay. When regime_kind is set, the engine
+  // ignores sleeve_weights and uses bull_sleeve_weights / bear_sleeve_weights
+  // picked per rebalance by the signal.
+  regime_kind?: "sma200" | null;
+  bull_sleeve_weights?: Record<string, number> | null;
+  bear_sleeve_weights?: Record<string, number> | null;
 };
 
 export type CreateRunPayload = {

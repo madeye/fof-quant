@@ -48,6 +48,9 @@ def execute_broad_index_backtest(
             benchmark_label=params.benchmark_label,
             write_report=True,
             explain_with_llm=False,
+            regime_kind=params.regime_kind,
+            bull_sleeve_weights=params.bull_sleeve_weights,
+            bear_sleeve_weights=params.bear_sleeve_weights,
         )
         as_of = _curve_end_date(backtest)
         registry.update_status(
