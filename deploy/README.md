@@ -56,7 +56,7 @@ systemctl daemon-reload
 systemctl enable --now fof-api fof-web'
 
 # 6. nginx site (HTTP only — certbot rewrites with HTTPS in step 7)
-scp deploy/<domain>.nginx root@<server>:/etc/nginx/sites-available/<domain>
+scp deploy/site.nginx root@<server>:/etc/nginx/sites-available/<domain>
 ssh root@<server> 'ln -sf /etc/nginx/sites-available/<domain> /etc/nginx/sites-enabled/ && nginx -t && systemctl reload nginx'
 
 # 7. Let's Encrypt — Cloudflare must be DNS-only (grey cloud) for <domain> during this step.
@@ -64,7 +64,7 @@ ssh root@<server> 'certbot --nginx -d <domain> --non-interactive --agree-tos -m 
 # Then re-enable Cloudflare proxy (orange cloud) with SSL mode = Full.
 ```
 
-The deploy/<domain>.nginx file in this repo is the post-certbot version (with both HTTP→HTTPS redirect and the SSL block). If you start from scratch, `certbot --nginx` will mutate a plain HTTP site into this layout automatically; ship the file in step 6 only as a starting reference.
+The deploy/site.nginx file in this repo is the post-certbot version (with both HTTP→HTTPS redirect and the SSL block). If you start from scratch, `certbot --nginx` will mutate a plain HTTP site into this layout automatically; ship the file in step 6 only as a starting reference.
 
 ## Google OAuth
 
