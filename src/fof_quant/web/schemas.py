@@ -32,7 +32,7 @@ class BroadIndexBacktestParams(BaseModel):
     sleeve_weights: dict[str, float] | None = None
     cash_buffer: float = Field(default=0.01, ge=0.0, lt=1.0)
     max_weight: float = Field(default=0.4, gt=0.0, le=1.0)
-    abs_band_pp: float = Field(default=5.0, ge=0.0)
+    abs_band_pp: float = Field(default=1.0, ge=0.0)
     rel_band_pct: float = Field(default=25.0, ge=0.0)
     transaction_cost_bps: float = Field(default=2.0, ge=0.0)
     slippage_bps: float = Field(default=1.0, ge=0.0)
@@ -62,7 +62,7 @@ class BroadIndexSignalParams(BaseModel):
     sleeve_weights: dict[str, float] | None = None
     cash_buffer: float = Field(default=0.01, ge=0.0, lt=1.0)
     max_weight: float = Field(default=0.4, gt=0.0, le=1.0)
-    abs_band_pp: float = Field(default=5.0, ge=0.0)
+    abs_band_pp: float = Field(default=1.0, ge=0.0)
     rel_band_pct: float = Field(default=25.0, ge=0.0)
     force_rebalance: bool = False
 

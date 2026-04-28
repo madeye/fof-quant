@@ -92,7 +92,7 @@
 - Take a current-holdings file (`holdings.json`) as input.
 - Reuse `analysis/broad_index._rank_sleeve` to pick one ETF per sleeve.
 - Build a target `AllocationPlan` from a configurable sleeve-weight map.
-- Compute drift (current vs target) and apply the band-rebalance rule (±5pp absolute or ±25% relative; forced semi-annual rebalance).
+- Compute drift (current vs target) and apply the band-rebalance rule (±1pp absolute or ±25% relative; forced semi-annual rebalance). Default tightened from ±5pp to ±1pp after the 2021–2026 sweep showed tighter bands materially improve risk-adjusted return on the dividend-heavy mix.
 - Emit a trade list (notional + share counts at last NAV/close) and a JSON manifest alongside the existing Excel/HTML report.
 - Keep the formal stock-through `pipeline.py` path untouched until Phase 2 has a real stock-factor source.
 

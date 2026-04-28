@@ -466,7 +466,7 @@ def run_broad_index_command(
     abs_band_pp: Annotated[
         float,
         typer.Option("--abs-band-pp", help="Absolute drift band in percentage points."),
-    ] = 5.0,
+    ] = 1.0,
     rel_band_pct: Annotated[
         float,
         typer.Option("--rel-band-pct", help="Relative drift band in percent of target weight."),
