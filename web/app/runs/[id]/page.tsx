@@ -73,7 +73,7 @@ export default async function RunPage({
           rawStrategyId={run.strategy_id ?? null}
         />
       ) : (
-        <pre className="overflow-auto rounded border bg-white p-3 text-xs">
+        <pre className="table-wrap p-3 text-xs leading-5">
           {JSON.stringify(manifest, null, 2)}
         </pre>
       )}
@@ -83,20 +83,26 @@ export default async function RunPage({
 
 function Header({ run, runId }: { run: RunDetail; runId: string }) {
   return (
-    <div className="flex items-baseline gap-3 flex-wrap">
-      <Link href="/" className="text-sm text-blue-600 hover:underline">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <Link href="/" className="text-link text-sm">
         ← 返回列表
       </Link>
-      <h1 className="text-xl font-semibold">{run.label}</h1>
-      <span className="text-sm text-slate-500">{kindLabel(run.kind)}</span>
-      <StatusBadge status={run.status} />
-      <div className="ml-auto flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="min-w-0 break-words text-xl font-semibold leading-tight text-slate-950">
+            {run.label}
+          </h1>
+          <StatusBadge status={run.status} />
+        </div>
+        <span className="text-sm text-slate-500">{kindLabel(run.kind)}</span>
+      </div>
+      <div className="toolbar sm:ml-auto">
         {run.report_html_path && (
           <a
             href={reportUrl(runId)}
             target="_blank"
             rel="noreferrer"
-            className="rounded border bg-white px-3 py-1.5 text-sm hover:bg-slate-100"
+            className="btn"
           >
             打开原始 HTML 报告 ↗
           </a>
@@ -110,8 +116,8 @@ function Header({ run, runId }: { run: RunDetail; runId: string }) {
 function ProgressPanel({ status }: { status: string }) {
   const label = status === "queued" ? "排队中" : status === "running" ? "运行中" : status;
   return (
-    <div className="rounded border bg-white p-6 text-sm text-slate-700">
-      <div className="font-medium mb-1">实验当前状态：{label}…</div>
+    <div className="panel-pad text-sm leading-6 text-slate-700">
+      <div className="mb-1 font-medium text-slate-900">实验当前状态：{label}…</div>
       <div className="text-slate-500">
         本页每 2 秒自动刷新一次，运行完成后会自动加载结果。
       </div>
@@ -121,9 +127,9 @@ function ProgressPanel({ status }: { status: string }) {
 
 function ErrorPanel({ error }: { error: string }) {
   return (
-    <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-900">
-      <div className="font-medium mb-1">实验运行失败</div>
-      <pre className="whitespace-pre-wrap text-xs">{error}</pre>
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+      <div className="mb-1 font-medium">实验运行失败</div>
+      <pre className="overflow-auto whitespace-pre-wrap text-xs leading-5">{error}</pre>
     </div>
   );
 }
@@ -156,19 +162,19 @@ function BacktestView({
   return (
     <div className="space-y-4">
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">
+        <h2 className="section-title">
           净值曲线{hasBenchmark ? `（含 ${benchmarkLabel} 对比）` : ""}
         </h2>
         <NavChart series={navSeries} />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">
+        <h2 className="section-title">
           回撤曲线{hasBenchmark ? `（含 ${benchmarkLabel} 对比）` : ""}
         </h2>
         <DrawdownChart series={drawdownSeries} />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">绩效指标</h2>
+        <h2 className="section-title">绩效指标</h2>
         <MetricsTable
           columns={[
             { label: "策略", metrics: manifest.metrics },
@@ -187,10 +193,10 @@ function LinkedSignals({ signals }: { signals: RunSummary[] }) {
   if (signals.length === 0) {
     return (
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">调仓历史</h2>
-        <div className="rounded border bg-white p-3 text-sm text-slate-600">
+        <h2 className="section-title">调仓历史</h2>
+        <div className="panel-pad text-sm leading-6 text-slate-600">
           尚未基于此策略生成过当日信号。在
-          <Link href="/signal" className="mx-1 text-blue-600 hover:underline">
+          <Link href="/signal" className="text-link mx-1">
             生成当日信号
           </Link>
           页面选择本策略即可建立绑定。
@@ -200,35 +206,35 @@ function LinkedSignals({ signals }: { signals: RunSummary[] }) {
   }
   return (
     <section>
-      <h2 className="text-sm font-medium mb-2 text-slate-700">
+      <h2 className="section-title">
         调仓历史（{signals.length}）
       </h2>
-      <div className="overflow-auto rounded border bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-100">
+      <div className="table-wrap">
+        <table className="data-table min-w-[640px]">
+          <thead>
             <tr>
-              <th className="px-3 py-2 text-left">名称</th>
-              <th className="px-3 py-2 text-left">截至日期</th>
-              <th className="px-3 py-2 text-left">创建时间</th>
-              <th className="px-3 py-2 text-left">状态</th>
+              <th>名称</th>
+              <th>截至日期</th>
+              <th>创建时间</th>
+              <th>状态</th>
             </tr>
           </thead>
           <tbody>
             {signals.map((s) => (
-              <tr key={s.id} className="border-t">
+              <tr key={s.id}>
                 <td className="px-3 py-2">
                   <Link
                     href={`/runs/${s.id}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-link font-medium"
                   >
                     {s.label}
                   </Link>
                 </td>
-                <td className="px-3 py-2 text-slate-700">{s.as_of_date ?? "—"}</td>
-                <td className="px-3 py-2 text-slate-700">
+                <td>{s.as_of_date ?? "—"}</td>
+                <td>
                   {s.created_at.slice(0, 10)}
                 </td>
-                <td className="px-3 py-2 text-slate-700">{s.status}</td>
+                <td>{s.status}</td>
               </tr>
             ))}
           </tbody>
@@ -259,12 +265,12 @@ function SignalView({
   return (
     <div className="space-y-4">
       {(strategy || rawStrategyId) && (
-        <section className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <section className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900">
           <span className="font-medium">基于策略：</span>{" "}
           {strategy ? (
             <Link
               href={`/runs/${strategy.id}`}
-              className="text-blue-600 hover:underline"
+              className="text-link"
             >
               {strategy.label}
             </Link>
@@ -273,13 +279,13 @@ function SignalView({
           )}
         </section>
       )}
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card label="截至日期" value={manifest.as_of} />
         <Card label="总规模" value={formatYi(manifest.total_aum_cny)} />
         <Card label="本次交易笔数" value={String(manifest.trade_count)} />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">目标持仓</h2>
+        <h2 className="section-title">目标持仓</h2>
         <AllocationTable
           columns={[
             {
@@ -292,24 +298,24 @@ function SignalView({
         />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">再平衡明细</h2>
-        <div className="overflow-auto rounded border bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100">
+        <h2 className="section-title">再平衡明细</h2>
+        <div className="table-wrap">
+          <table className="data-table min-w-[860px]">
+            <thead>
               <tr>
-                <th className="px-3 py-2 text-left">板块</th>
-                <th className="px-3 py-2 text-left">代码</th>
-                <th className="px-3 py-2 text-right">目标权重</th>
-                <th className="px-3 py-2 text-right">当前权重</th>
-                <th className="px-3 py-2 text-right">偏离（pp）</th>
-                <th className="px-3 py-2 text-left">操作</th>
-                <th className="px-3 py-2 text-right">交易金额</th>
-                <th className="px-3 py-2 text-right">交易股数</th>
+                <th>板块</th>
+                <th>代码</th>
+                <th className="text-right">目标权重</th>
+                <th className="text-right">当前权重</th>
+                <th className="text-right">偏离（pp）</th>
+                <th>操作</th>
+                <th className="text-right">交易金额</th>
+                <th className="text-right">交易股数</th>
               </tr>
             </thead>
             <tbody>
               {manifest.rebalance_lines.map((line) => (
-                <tr key={line.ts_code} className="border-t">
+                <tr key={line.ts_code}>
                   <td className="px-3 py-2">{line.sleeve}</td>
                   <td className="px-3 py-2 font-mono text-xs">{line.ts_code}</td>
                   <td className="px-3 py-2 text-right">{formatPct(line.target_weight)}</td>
@@ -336,9 +342,9 @@ function SignalView({
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border bg-white p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="metric-card">
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className="mt-1 break-words text-lg font-semibold text-slate-950">{value}</div>
     </div>
   );
 }

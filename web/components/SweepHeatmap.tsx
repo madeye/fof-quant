@@ -69,7 +69,7 @@ export default function SweepHeatmap({
         )}${suffix}`;
       },
     },
-    grid: { left: 140, right: 20, top: 30, bottom: 60 },
+    grid: { left: 110, right: 12, top: 30, bottom: 64, containLabel: true },
     xAxis: {
       type: "category",
       data: bands.map((b) => `${b}pp`),
@@ -110,5 +110,14 @@ export default function SweepHeatmap({
       },
     ],
   };
-  return <ReactECharts option={option} style={{ height: 60 + schemes.length * 36 }} notMerge />;
+  return (
+    <div className="table-wrap p-2 sm:p-3">
+      <ReactECharts
+        className="min-w-[640px]"
+        option={option}
+        style={{ height: Math.max(280, 84 + schemes.length * 36) }}
+        notMerge
+      />
+    </div>
+  );
 }

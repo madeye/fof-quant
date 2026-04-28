@@ -18,6 +18,32 @@ export type RunSummary = {
   strategy_id?: string | null;
 };
 
+export type RunOverview =
+  | {
+      kind: "backtest";
+      points: number[];
+      total_return: number | null;
+      annualized_return: number | null;
+      max_drawdown: number | null;
+      sharpe: number | null;
+    }
+  | {
+      kind: "signal";
+      total_aum_cny: number | null;
+      trade_count: number | null;
+      holdings: Array<{ code: string; weight: number }>;
+    }
+  | {
+      kind: "sweep";
+      best_scheme: string | null;
+      best_sharpe: number | null;
+      rows_count: number;
+    }
+  | {
+      kind: "empty";
+      message: string;
+    };
+
 export type RunDetail = RunSummary & {
   manifest_path: string;
   report_html_path: string | null;

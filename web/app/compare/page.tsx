@@ -19,12 +19,12 @@ export default async function ComparePage({
     .filter(Boolean);
   if (idList.length !== 2) {
     return (
-      <div className="rounded border bg-white p-4 text-sm">
+      <div className="panel-pad text-sm leading-6">
         <p className="mb-2 font-medium">对比功能需要正好两条实验记录。</p>
         <p>
           当前传入：<code>{ids ?? "(空)"}</code>。请回到
           {" "}
-          <Link href="/" className="text-blue-600 hover:underline">
+          <Link href="/" className="text-link">
             实验列表
           </Link>
           {" "}
@@ -61,36 +61,36 @@ export default async function ComparePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline gap-3">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline">
+        <Link href="/" className="text-link text-sm">
           ← 返回列表
         </Link>
-        <h1 className="text-xl font-semibold">策略对比</h1>
-        <span className="text-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-slate-950">策略对比</h1>
+        <span className="break-words text-sm text-slate-500">
           {a.run.label} vs {b.run.label}
         </span>
       </div>
 
       {navSeries.length === 2 ? (
         <section>
-          <h2 className="text-sm font-medium mb-2 text-slate-700">净值曲线（叠加）</h2>
+          <h2 className="section-title">净值曲线（叠加）</h2>
           <NavChart series={navSeries} />
         </section>
       ) : (
-        <div className="rounded border bg-yellow-50 p-3 text-sm text-yellow-800">
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm leading-6 text-yellow-800">
           叠加净值曲线需要两条均为回测的实验。当前所选记录中存在非回测，仅展示持仓对比。
         </div>
       )}
 
       {metricsColumns.length === 2 && (
         <section>
-          <h2 className="text-sm font-medium mb-2 text-slate-700">指标对比</h2>
+          <h2 className="section-title">指标对比</h2>
           <MetricsTable columns={metricsColumns} />
         </section>
       )}
 
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">持仓差异</h2>
+        <h2 className="section-title">持仓差异</h2>
         <AllocationTable columns={allocationColumns} />
       </section>
     </div>

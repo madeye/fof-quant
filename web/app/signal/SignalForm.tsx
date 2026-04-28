@@ -167,15 +167,15 @@ export default function SignalForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded border bg-white p-4 max-w-3xl"
+      className="form-card"
     >
-      <section className="rounded border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+      <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
         <div className="text-sm font-medium text-emerald-900">基于已有回测</div>
-        <div className="flex gap-2 items-start">
+        <div className="flex items-start gap-2">
           <select
             value={pickedBacktestId}
             onChange={(e) => onPickBacktest(e.target.value)}
-            className="flex-1 rounded border bg-white px-2 py-1 text-sm"
+            className="min-w-0 flex-1 text-sm"
           >
             <option value="">-- 不基于回测，使用默认参数 --</option>
             {backtests.map((bt) => (
@@ -186,7 +186,7 @@ export default function SignalForm() {
           </select>
         </div>
         {pickError && (
-          <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
+          <div className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800">
             {pickError}
           </div>
         )}
@@ -197,17 +197,17 @@ export default function SignalForm() {
         </div>
       </section>
       <label className="block text-sm">
-        <div className="mb-1 text-slate-700">标签（可选）</div>
+        <div className="mb-1 font-medium text-slate-700">标签（可选）</div>
         <input
           type="text"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="留空将自动生成「当日信号」"
-          className="w-full rounded border px-2 py-1"
+          className="w-full"
         />
       </label>
       <label className="block text-sm">
-        <div className="mb-1 text-slate-700">
+        <div className="mb-1 font-medium text-slate-700">
           当前持仓 JSON（可选，留空表示按新资金建仓）
         </div>
         <textarea
@@ -215,18 +215,18 @@ export default function SignalForm() {
           value={holdingsText}
           onChange={(e) => setHoldingsText(e.target.value)}
           placeholder={HOLDINGS_PLACEHOLDER}
-          className="w-full rounded border px-2 py-1 font-mono text-xs"
+          className="w-full font-mono text-xs"
         />
       </label>
       <label className="block text-sm">
-        <div className="mb-1 text-slate-700">无持仓时的初始资金（元）</div>
+        <div className="mb-1 font-medium text-slate-700">无持仓时的初始资金（元）</div>
         <input
           type="number"
           min={1000}
           step={1000}
           value={initialCash}
           onChange={(e) => setInitialCash(Number(e.target.value))}
-          className="w-full rounded border px-2 py-1"
+          className="w-full"
         />
       </label>
       <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -241,13 +241,13 @@ export default function SignalForm() {
       <button
         type="button"
         onClick={() => setShowAdvanced((v) => !v)}
-        className="text-sm text-blue-600 hover:underline"
+        className="text-link text-sm font-medium"
       >
         {showAdvanced ? "收起高级设置 ▴" : "展开高级设置 ▾"}
       </button>
       {showAdvanced && (
-        <section className="space-y-3 rounded border bg-slate-50 p-3">
-          <div className="grid grid-cols-2 gap-3">
+        <section className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="form-grid">
             <Field label="现金缓冲（%）">
               <input
                 type="number"
@@ -258,7 +258,7 @@ export default function SignalForm() {
                 onChange={(e) =>
                   setAdvanced((p) => ({ ...p, cash_buffer_pct: Number(e.target.value) }))
                 }
-                className="w-full rounded border px-2 py-1"
+                className="w-full"
               />
             </Field>
             <Field label="单只 ETF 最大权重（%）">
@@ -271,7 +271,7 @@ export default function SignalForm() {
                 onChange={(e) =>
                   setAdvanced((p) => ({ ...p, max_weight_pct: Number(e.target.value) }))
                 }
-                className="w-full rounded border px-2 py-1"
+                className="w-full"
               />
             </Field>
             <Field label="绝对偏离（pp）">
@@ -283,7 +283,7 @@ export default function SignalForm() {
                 onChange={(e) =>
                   setAdvanced((p) => ({ ...p, abs_band_pp: Number(e.target.value) }))
                 }
-                className="w-full rounded border px-2 py-1"
+                className="w-full"
               />
             </Field>
             <Field label="相对偏离（%）">
@@ -295,7 +295,7 @@ export default function SignalForm() {
                 onChange={(e) =>
                   setAdvanced((p) => ({ ...p, rel_band_pct: Number(e.target.value) }))
                 }
-                className="w-full rounded border px-2 py-1"
+                className="w-full"
               />
             </Field>
           </div>
@@ -306,29 +306,29 @@ export default function SignalForm() {
               onChange={(e) =>
                 setAdvanced((p) => ({ ...p, sleeve_weights_json: e.target.value }))
               }
-              className="w-full rounded border px-2 py-1 font-mono text-xs"
+              className="w-full font-mono text-xs"
             />
           </Field>
         </section>
       )}
 
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="toolbar">
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          className="btn btn-primary px-4"
         >
           {submitting ? "提交中…" : "生成信号"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/")}
-          className="rounded border bg-white px-4 py-2 text-sm hover:bg-slate-100"
+          className="btn px-4"
         >
           取消
         </button>
@@ -340,7 +340,7 @@ export default function SignalForm() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block text-sm">
-      <div className="mb-1 text-slate-700">{label}</div>
+      <div className="mb-1 font-medium text-slate-700">{label}</div>
       {children}
     </label>
   );

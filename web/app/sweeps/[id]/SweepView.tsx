@@ -27,15 +27,15 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
   return (
     <div className="space-y-6">
       <section>
-        <div className="mb-2 flex items-center gap-2">
-          <span className="text-sm text-slate-700">指标：</span>
+        <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <span className="text-sm font-medium text-slate-700">指标：</span>
           <div className="flex flex-wrap gap-1">
             {METRICS.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={
-                  "rounded border px-2 py-1 text-xs " +
+                  "min-h-9 rounded-md border px-2 py-1 text-xs font-medium " +
                   (metric === m.key
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white text-slate-700 hover:bg-slate-100")
@@ -54,27 +54,27 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
         />
       </section>
       <section>
-        <h2 className="text-sm font-medium mb-2 text-slate-700">
+        <h2 className="section-title">
           按「{METRICS.find((m) => m.key === metric)?.label ?? metric}」排名前 10
         </h2>
-        <div className="overflow-auto rounded border bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100">
+        <div className="table-wrap">
+          <table className="data-table min-w-[760px]">
+            <thead>
               <tr>
-                <th className="px-3 py-2 text-left">排名</th>
-                <th className="px-3 py-2 text-left">方案</th>
-                <th className="px-3 py-2 text-right">区间</th>
-                <th className="px-3 py-2 text-right">年化收益</th>
-                <th className="px-3 py-2 text-right">年化波动</th>
-                <th className="px-3 py-2 text-right">夏普</th>
-                <th className="px-3 py-2 text-right">最大回撤</th>
-                <th className="px-3 py-2 text-right">卡玛</th>
-                <th className="px-3 py-2 text-right">换手率</th>
+                <th>排名</th>
+                <th>方案</th>
+                <th className="text-right">区间</th>
+                <th className="text-right">年化收益</th>
+                <th className="text-right">年化波动</th>
+                <th className="text-right">夏普</th>
+                <th className="text-right">最大回撤</th>
+                <th className="text-right">卡玛</th>
+                <th className="text-right">换手率</th>
               </tr>
             </thead>
             <tbody>
               {topRows.map((row, idx) => (
-                <tr key={`${row.scheme}-${row.band_pp}`} className="border-t">
+                <tr key={`${row.scheme}-${row.band_pp}`}>
                   <td className="px-3 py-2">{idx + 1}</td>
                   <td className="px-3 py-2">{row.scheme}</td>
                   <td className="px-3 py-2 text-right">{row.band_pp.toFixed(1)}</td>
@@ -103,7 +103,7 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
         </div>
       </section>
       {manifest.benchmark && (
-        <section className="rounded border bg-white p-3 text-sm text-slate-700">
+        <section className="panel-pad text-sm leading-6 text-slate-700">
           <span className="font-medium">基准：</span>{" "}
           年化 {(manifest.benchmark.annualized_return * 100).toFixed(2)}% · 波动{" "}
           {(manifest.benchmark.volatility * 100).toFixed(2)}% · 夏普{" "}
