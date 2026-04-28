@@ -18,3 +18,4 @@ build/
 /credentials/
 /.claude/
 /runs/
+AGENTS.md
