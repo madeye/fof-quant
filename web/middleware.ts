@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-const PUBLIC_PATHS = ["/login"];
+// PWA assets must load before login so the browser can install the app and
+// the service worker can boot on the public /login route.
+const PUBLIC_PATHS = ["/login", "/manifest.webmanifest", "/sw.js", "/icons"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

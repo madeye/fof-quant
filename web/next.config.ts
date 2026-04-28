@@ -18,6 +18,25 @@ const nextConfig: NextConfig = {
       { source: "/api/runs/:path*", destination: `${target}/api/runs/:path*` },
     ];
   },
+  // The service worker must never be cached by the browser or any intermediary
+  // — otherwise SW updates can be delayed by hours/days and clients stay stuck
+  // on a stale shell. The manifest itself is small and changes rarely, but we
+  // also bypass cache so icon/name changes propagate on next load.
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
+        source: "/manifest.webmanifest",
+        headers: [{ key: "Cache-Control", value: "no-cache" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

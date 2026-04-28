@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="fof-quant">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <g fill="none" stroke="#38bdf8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="80,360 180,260 250,310 340,180 432,240"/>
+  </g>
+  <g fill="#e2e8f0" font-family="ui-sans-serif, system-ui, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="256" y="448" font-size="96" letter-spacing="6">fof</text>
+  </g>
+</svg>
