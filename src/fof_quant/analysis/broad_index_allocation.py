@@ -3,16 +3,18 @@ from __future__ import annotations
 from fof_quant.allocation.engine import AllocationPlan, AllocationRow
 from fof_quant.analysis.broad_index import BroadIndexAnalysis
 
-# Default 5-sleeve FOF recommendation; matches docs/ROADMAP.md Phase 6.5.
-# 沪深300 and 中证500 are intentionally dropped because they overlap with
-# 中证A500 (corr 0.98) and 中证1000 (corr 0.97) respectively — the cached
-# correlation matrix in analysis/broad_index.py confirms this empirically.
+# Default 5-sleeve FOF mix. Tilts toward 中证红利低波 (35%) because it dominated
+# the analysis/sweep grid on the cached 2021–2026 broad-index window:
+# Sharpe 0.640, CAGR 8.66%, MaxDD -16.4%, Calmar 0.53 — the best of 42 sweep
+# combos and ~10x the benchmark Sharpe (沪深300TR Sharpe 0.065). 沪深300 and
+# 中证500 are intentionally dropped because they overlap with 中证A500
+# (corr 0.98) and 中证1000 (corr 0.97) respectively.
 DEFAULT_SLEEVE_WEIGHTS: dict[str, float] = {
-    "中证A500": 0.35,
-    "中证1000": 0.20,
-    "创业板指": 0.15,
-    "科创50": 0.15,
-    "中证红利低波": 0.15,
+    "中证A500": 0.30,
+    "中证1000": 0.15,
+    "创业板指": 0.10,
+    "科创50": 0.10,
+    "中证红利低波": 0.35,
 }
 
 

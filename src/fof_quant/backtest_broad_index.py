@@ -61,7 +61,7 @@ def run_broad_index_backtest(
     sleeve_weights: dict[str, float] | None = None,
     cash_buffer: float = 0.01,
     max_weight: float = 0.4,
-    abs_band_pp: float = 5.0,
+    abs_band_pp: float = 1.0,
     rel_band_pct: float = 25.0,
     transaction_cost_bps: float = 2.0,
     slippage_bps: float = 1.0,
