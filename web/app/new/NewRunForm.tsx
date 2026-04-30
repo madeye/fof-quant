@@ -223,7 +223,7 @@ export default function NewRunForm() {
           type="button"
           onClick={onAiSuggest}
           disabled={aiBusy}
-          className="btn btn-primary min-h-9 px-3 py-1.5 text-xs"
+          className="btn btn-primary text-sm"
         >
           {aiBusy ? "正在生成…" : "AI 生成参数"}
         </button>

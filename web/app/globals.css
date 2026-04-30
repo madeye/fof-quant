@@ -5,6 +5,10 @@
 :root {
   color-scheme: light;
   --page-x: clamp(1rem, 4vw, 1.5rem);
+  --page-x-left: max(var(--page-x), env(safe-area-inset-left));
+  --page-x-right: max(var(--page-x), env(safe-area-inset-right));
+  --safe-top: env(safe-area-inset-top);
+  --tap-size: 2.75rem;
 }
 
 .dark {
@@ -25,10 +29,12 @@ body {
 @layer base {
   html {
     font-size: 16px;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+    overscroll-behavior-y: none;
   }
 
   a,
@@ -37,12 +43,13 @@ body {
   select,
   textarea {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+    touch-action: manipulation;
   }
 
   input,
   select,
   textarea {
-    @apply min-h-10 rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+    @apply min-h-11 rounded border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 sm:min-h-10 sm:text-sm;
   }
 
   textarea {
@@ -57,8 +64,15 @@ body {
 @layer components {
   .page-shell {
     @apply mx-auto w-full max-w-6xl py-5 sm:py-6;
-    padding-left: var(--page-x);
-    padding-right: var(--page-x);
+    padding-left: var(--page-x-left);
+    padding-right: var(--page-x-right);
+  }
+
+  .app-header-inner {
+    padding-left: var(--page-x-left);
+    padding-right: var(--page-x-right);
+    padding-top: calc(0.5rem + var(--safe-top));
+    padding-bottom: 0.5rem;
   }
 
   .panel {
@@ -74,11 +88,17 @@ body {
   }
 
   .toolbar {
-    @apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center;
+    @apply flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center;
   }
 
   .btn {
-    @apply inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800;
+    @apply inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 sm:min-h-10 sm:px-3;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn {
+      @apply hover:bg-slate-50 dark:hover:bg-slate-800;
+    }
   }
 
   .btn-primary {
@@ -97,9 +117,16 @@ body {
     @apply text-blue-600 hover:underline dark:text-blue-400;
   }
 
+  .tap-target {
+    min-height: var(--tap-size);
+    min-width: var(--tap-size);
+  }
+
   .table-wrap {
     @apply overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
     -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+    touch-action: pan-x pan-y;
   }
 
   .data-table {
@@ -111,11 +138,11 @@ body {
   }
 
   .data-table th {
-    @apply whitespace-nowrap px-3 py-2 text-left font-semibold;
+    @apply whitespace-nowrap px-3 py-3 text-left font-semibold sm:py-2;
   }
 
   .data-table td {
-    @apply px-3 py-2 align-middle text-slate-700 dark:text-slate-300;
+    @apply px-3 py-3 align-middle text-slate-700 dark:text-slate-300 sm:py-2;
   }
 
   .data-table tbody tr {
@@ -139,7 +166,7 @@ body {
   }
 
   .run-card {
-    @apply flex min-h-[22rem] flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-blue-900;
+    @apply flex min-h-[22rem] flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition dark:border-slate-800 dark:bg-slate-900;
   }
 
   .run-card-muted {
@@ -148,7 +175,25 @@ body {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --page-x: 1rem;
+  }
+
   .echarts-for-react {
     min-width: 0;
+  }
+
+  .table-wrap {
+    margin-left: calc(var(--page-x) * -1);
+    margin-right: calc(var(--page-x) * -1);
+    border-left-width: 0;
+    border-right-width: 0;
+    border-radius: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .run-card {
+    @apply hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md dark:hover:border-blue-900;
   }
 }

@@ -17,8 +17,8 @@ export default async function SweepPage({
     return (
       <div className="panel-pad text-sm leading-6">
         <p className="mb-2 font-medium">该实验不是参数扫描类型。</p>
-        <Link href={`/runs/${id}`} className="text-link">
-          以实验详情页打开 →
+        <Link href={`/runs/${id}`} className="text-link inline-flex min-h-11 items-center sm:min-h-10">
+          以实验详情页打开
         </Link>
       </div>
     );
@@ -27,7 +27,7 @@ export default async function SweepPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline">
-        <Link href="/" className="text-link text-sm">
+        <Link href="/" className="text-link inline-flex min-h-11 items-center text-sm sm:min-h-10">
           ← 返回列表
         </Link>
         <h1 className="break-words text-xl font-semibold text-slate-950">{run.label}</h1>
