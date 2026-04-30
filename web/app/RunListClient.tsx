@@ -147,13 +147,15 @@ export default function RunListClient({
         {initialRuns.map((run) => (
           <article key={run.id} className="run-card">
             <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={selected.has(run.id)}
-                onChange={() => toggle(run.id)}
-                aria-label={`选择 ${run.label}`}
-                className="mt-1 size-4 min-h-0 shadow-none"
-              />
+              <label className="-m-2 flex min-h-11 min-w-11 shrink-0 items-start justify-center p-2">
+                <input
+                  type="checkbox"
+                  checked={selected.has(run.id)}
+                  onChange={() => toggle(run.id)}
+                  aria-label={`选择 ${run.label}`}
+                  className="mt-1 size-5 min-h-0 shadow-none"
+                />
+              </label>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={run.status} />
@@ -186,14 +188,14 @@ export default function RunListClient({
                     ? `/sweeps/${run.id}`
                     : `/runs/${run.id}`
                 }
-                className="text-link text-sm font-medium"
+                className="btn"
               >
                 查看详情
               </Link>
               <button
                 onClick={() => onDeleteRow(run)}
                 disabled={deletingId === run.id || bulkDeleting}
-                className="text-xs font-medium text-red-700 hover:underline disabled:opacity-50 dark:text-red-300"
+                className="btn btn-danger"
               >
                 {deletingId === run.id ? "删除中…" : "删除"}
               </button>

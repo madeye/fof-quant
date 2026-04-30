@@ -35,7 +35,7 @@ export default function SweepView({ manifest }: { manifest: SweepManifest }) {
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={
-                  "min-h-9 rounded-md border px-2 py-1 text-xs font-medium " +
+                  "min-h-11 rounded-md border px-3 py-2 text-sm font-medium sm:min-h-9 sm:px-2 sm:py-1 sm:text-xs " +
                   (metric === m.key
                     ? "bg-blue-600 text-white border-blue-600"
                     : "bg-white text-slate-700 hover:bg-slate-100")

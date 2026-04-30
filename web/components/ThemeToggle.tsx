@@ -35,7 +35,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="btn min-h-9 px-3 py-1.5"
+      className="btn min-h-9 px-2 py-1 text-xs sm:min-h-10 sm:px-3 sm:text-sm"
       aria-label={theme === "dark" ? "切换到浅色主题" : "切换到深色主题"}
     >
       <span>{theme === "dark" ? "浅色" : "深色"}</span>

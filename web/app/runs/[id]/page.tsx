@@ -83,18 +83,29 @@ export default async function RunPage({
 
 function Header({ run, runId }: { run: RunDetail; runId: string }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-      <Link href="/" className="text-link text-sm">
-        ← 返回列表
-      </Link>
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <Link href="/" className="text-link inline-flex min-h-9 shrink-0 items-center text-sm sm:min-h-10">
+          ← 返回
+        </Link>
+        <div className="min-w-0 flex-1 sm:hidden">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="min-w-0 truncate text-lg font-semibold leading-tight text-slate-950 dark:text-slate-50">
+              {run.label}
+            </h1>
+            <StatusBadge status={run.status} />
+          </div>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{kindLabel(run.kind)}</span>
+        </div>
+      </div>
+      <div className="hidden min-w-0 flex-1 sm:block">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="min-w-0 break-words text-xl font-semibold leading-tight text-slate-950">
+          <h1 className="min-w-0 break-words text-xl font-semibold leading-tight text-slate-950 dark:text-slate-50">
             {run.label}
           </h1>
           <StatusBadge status={run.status} />
         </div>
-        <span className="text-sm text-slate-500">{kindLabel(run.kind)}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{kindLabel(run.kind)}</span>
       </div>
       <div className="toolbar sm:ml-auto">
         {run.report_html_path && (
@@ -104,7 +115,7 @@ function Header({ run, runId }: { run: RunDetail; runId: string }) {
             rel="noreferrer"
             className="btn"
           >
-            打开原始 HTML 报告 ↗
+            打开原始 HTML 报告
           </a>
         )}
         <DeleteRunButton runId={runId} kind={run.kind} label={run.label} />
@@ -116,9 +127,9 @@ function Header({ run, runId }: { run: RunDetail; runId: string }) {
 function ProgressPanel({ status }: { status: string }) {
   const label = status === "queued" ? "排队中" : status === "running" ? "运行中" : status;
   return (
-    <div className="panel-pad text-sm leading-6 text-slate-700">
-      <div className="mb-1 font-medium text-slate-900">实验当前状态：{label}…</div>
-      <div className="text-slate-500">
+    <div className="panel-pad text-sm leading-6 text-slate-700 dark:text-slate-300">
+      <div className="mb-1 font-medium text-slate-900 dark:text-slate-100">实验当前状态：{label}…</div>
+      <div className="text-slate-500 dark:text-slate-400">
         本页每 2 秒自动刷新一次，运行完成后会自动加载结果。
       </div>
     </div>
@@ -127,7 +138,7 @@ function ProgressPanel({ status }: { status: string }) {
 
 function ErrorPanel({ error }: { error: string }) {
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-200">
       <div className="mb-1 font-medium">实验运行失败</div>
       <pre className="overflow-auto whitespace-pre-wrap text-xs leading-5">{error}</pre>
     </div>
@@ -194,7 +205,7 @@ function LinkedSignals({ signals }: { signals: RunSummary[] }) {
     return (
       <section>
         <h2 className="section-title">调仓历史</h2>
-        <div className="panel-pad text-sm leading-6 text-slate-600">
+        <div className="panel-pad text-sm leading-6 text-slate-600 dark:text-slate-300">
           尚未基于此策略生成过当日信号。在
           <Link href="/signal" className="text-link mx-1">
             生成当日信号
@@ -225,7 +236,7 @@ function LinkedSignals({ signals }: { signals: RunSummary[] }) {
                 <td className="px-3 py-2">
                   <Link
                     href={`/runs/${s.id}`}
-                    className="text-link font-medium"
+                    className="text-link inline-flex min-h-11 items-center font-medium sm:min-h-0"
                   >
                     {s.label}
                   </Link>
@@ -265,7 +276,7 @@ function SignalView({
   return (
     <div className="space-y-4">
       {(strategy || rawStrategyId) && (
-        <section className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900">
+        <section className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm leading-6 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/35 dark:text-emerald-100">
           <span className="font-medium">基于策略：</span>{" "}
           {strategy ? (
             <Link
@@ -343,8 +354,8 @@ function SignalView({
 function Card({ label, value }: { label: string; value: string }) {
   return (
     <div className="metric-card">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className="mt-1 break-words text-lg font-semibold text-slate-950">{value}</div>
+      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="mt-1 break-words text-lg font-semibold text-slate-950 dark:text-slate-50">{value}</div>
     </div>
   );
 }

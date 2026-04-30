@@ -62,7 +62,7 @@ export default async function ComparePage({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline">
-        <Link href="/" className="text-link text-sm">
+        <Link href="/" className="text-link inline-flex min-h-11 items-center text-sm sm:min-h-10">
           ← 返回列表
         </Link>
         <h1 className="text-xl font-semibold text-slate-950">策略对比</h1>

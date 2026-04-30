@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { CurvePoint } from "@/lib/types";
 
@@ -14,12 +15,22 @@ export type NavSeries = {
  * 在同一坐标系下比较。
  */
 export default function NavChart({ series }: { series: NavSeries[] }) {
+  const isDark = useDarkMode();
+  const textColor = isDark ? "#cbd5e1" : "#475569";
+  const mutedColor = isDark ? "#64748b" : "#94a3b8";
+  const splitLineColor = isDark ? "#1e293b" : "#e2e8f0";
+  const tooltipBackground = isDark ? "rgba(15, 23, 42, 0.96)" : "rgba(255, 255, 255, 0.96)";
   const allDates = Array.from(
     new Set(series.flatMap((s) => s.points.map((p) => p.trade_date)))
   ).sort();
   const option = {
+    backgroundColor: "transparent",
+    textStyle: { color: textColor },
     tooltip: {
       trigger: "axis",
+      backgroundColor: tooltipBackground,
+      borderColor: splitLineColor,
+      textStyle: { color: textColor },
       valueFormatter: (v: number | null) =>
         v == null || !Number.isFinite(v) ? "—" : v.toFixed(4),
     },
@@ -27,15 +38,25 @@ export default function NavChart({ series }: { series: NavSeries[] }) {
       data: series.map((s) => s.label),
       type: "scroll",
       top: 0,
-      textStyle: { color: "#475569", fontSize: 12 },
+      textStyle: { color: textColor, fontSize: 12 },
     },
     grid: { left: 42, right: 18, top: 48, bottom: 38, containLabel: true },
-    xAxis: { type: "category", data: allDates, boundaryGap: false },
+    xAxis: {
+      type: "category",
+      data: allDates,
+      boundaryGap: false,
+      axisLabel: { color: mutedColor },
+      axisLine: { lineStyle: { color: splitLineColor } },
+      axisTick: { lineStyle: { color: splitLineColor } },
+    },
     yAxis: {
       type: "value",
       scale: true,
       name: "净值",
-      axisLabel: { formatter: (v: number) => v.toFixed(2) },
+      nameTextStyle: { color: textColor },
+      axisLabel: { color: mutedColor, formatter: (v: number) => v.toFixed(2) },
+      axisLine: { lineStyle: { color: splitLineColor } },
+      splitLine: { lineStyle: { color: splitLineColor } },
     },
     series: series.map((s) => ({
       name: s.label,
@@ -55,6 +76,21 @@ export default function NavChart({ series }: { series: NavSeries[] }) {
       />
     </div>
   );
+}
+
+function useDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => setIsDark(root.classList.contains("dark"));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
 }
 
 function alignAndNormalize(

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import type { CurvePoint } from "@/lib/types";
 
@@ -25,6 +26,11 @@ export default function DrawdownChart({
   points?: Pick<CurvePoint, "trade_date" | "drawdown">[];
   series?: DrawdownSeries[];
 }) {
+  const isDark = useDarkMode();
+  const textColor = isDark ? "#cbd5e1" : "#475569";
+  const mutedColor = isDark ? "#64748b" : "#94a3b8";
+  const splitLineColor = isDark ? "#1e293b" : "#e2e8f0";
+  const tooltipBackground = isDark ? "rgba(15, 23, 42, 0.96)" : "rgba(255, 255, 255, 0.96)";
   const resolved: DrawdownSeries[] =
     series && series.length > 0
       ? series
@@ -35,8 +41,13 @@ export default function DrawdownChart({
     new Set(resolved.flatMap((s) => s.points.map((p) => p.trade_date)))
   ).sort();
   const option = {
+    backgroundColor: "transparent",
+    textStyle: { color: textColor },
     tooltip: {
       trigger: "axis",
+      backgroundColor: tooltipBackground,
+      borderColor: splitLineColor,
+      textStyle: { color: textColor },
       valueFormatter: (v: number | null) =>
         v == null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(2)}%`,
     },
@@ -46,7 +57,7 @@ export default function DrawdownChart({
             data: resolved.map((s) => s.label),
             type: "scroll",
             top: 0,
-            textStyle: { color: "#475569", fontSize: 12 },
+            textStyle: { color: textColor, fontSize: 12 },
           }
         : undefined,
     grid: {
@@ -56,11 +67,21 @@ export default function DrawdownChart({
       bottom: 34,
       containLabel: true,
     },
-    xAxis: { type: "category", data: allDates, boundaryGap: false },
+    xAxis: {
+      type: "category",
+      data: allDates,
+      boundaryGap: false,
+      axisLabel: { color: mutedColor },
+      axisLine: { lineStyle: { color: splitLineColor } },
+      axisTick: { lineStyle: { color: splitLineColor } },
+    },
     yAxis: {
       type: "value",
       name: "回撤",
-      axisLabel: { formatter: (v: number) => `${(v * 100).toFixed(0)}%` },
+      nameTextStyle: { color: textColor },
+      axisLabel: { color: mutedColor, formatter: (v: number) => `${(v * 100).toFixed(0)}%` },
+      axisLine: { lineStyle: { color: splitLineColor } },
+      splitLine: { lineStyle: { color: splitLineColor } },
     },
     series: resolved.map((s, idx) => {
       const palette = PALETTE[idx] ?? PALETTE[PALETTE.length - 1];
@@ -84,6 +105,21 @@ export default function DrawdownChart({
       />
     </div>
   );
+}
+
+function useDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => setIsDark(root.classList.contains("dark"));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
 }
 
 function alignDrawdown(
