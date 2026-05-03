@@ -10,7 +10,7 @@ EnvironmentFile=/home/fof/app/web/.env.local
 Environment=NODE_ENV=production
 Environment=PORT=3001
 Environment=HOSTNAME=127.0.0.1
-ExecStart=/usr/bin/pnpm exec next start -H 127.0.0.1 -p 3001
+ExecStart=/usr/local/bin/bun --bun x next start -H 127.0.0.1 -p 3001
 Restart=on-failure
 RestartSec=5
 

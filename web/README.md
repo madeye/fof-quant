@@ -14,8 +14,8 @@ uv sync --extra web
 uv run fof-quant web serve --reports-dir reports/
 
 # 2) start the UI
-pnpm --dir web install
-pnpm --dir web dev
+bun --cwd web install
+bun --cwd web run dev
 ```
 
 Visit <http://localhost:3000>.
