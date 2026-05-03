@@ -36,7 +36,7 @@ ssh root@<server> 'chown -R fof:fof /home/fof/app'
 
 # 3. Build
 ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
-ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && bun install --frozen-lockfile && bun run build"'
 
 # 4. Production env (the dashboard secret + OAuth credentials)
 ssh root@<server> "cat > /home/fof/app/web/.env.local <<'EOF'
@@ -75,7 +75,7 @@ Add `https://<domain>/api/auth/callback/google` to the OAuth client's **Authoriz
 ```bash
 # rsync new code, then:
 ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app && ~/.local/bin/uv sync --extra web"'
-ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && pnpm install --frozen-lockfile && pnpm build"'
+ssh root@<server> 'sudo -u fof bash -lc "cd /home/fof/app/web && bun install --frozen-lockfile && bun run build"'
 ssh root@<server> 'systemctl restart fof-api fof-web'
 ```
 
