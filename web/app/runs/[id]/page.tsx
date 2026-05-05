@@ -29,13 +29,14 @@ export default async function RunPage({
   const failed = run.status === "failed";
 
   let manifest: unknown = null;
+  let manifestError: string | null = null;
   let linkedSignals: RunSummary[] = [];
   let strategyRun: RunDetail | null = null;
   if (!inProgress && !failed) {
     try {
       manifest = await getManifest(id);
     } catch (err) {
-      manifest = { _error: err instanceof Error ? err.message : String(err) };
+      manifestError = err instanceof Error ? err.message : String(err);
     }
     if (run.kind === "broad_index_backtest") {
       try {
@@ -60,6 +61,8 @@ export default async function RunPage({
         <ProgressPanel status={run.status} />
       ) : failed ? (
         <ErrorPanel error={run.error ?? "(no error message recorded)"} />
+      ) : manifestError ? (
+        <ManifestMissingPanel error={manifestError} />
       ) : run.kind === "broad_index_backtest" ? (
         <BacktestView
           run={run.label}
@@ -141,6 +144,19 @@ function ErrorPanel({ error }: { error: string }) {
     <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/70 dark:bg-red-950/50 dark:text-red-200">
       <div className="mb-1 font-medium">实验运行失败</div>
       <pre className="overflow-auto whitespace-pre-wrap text-xs leading-5">{error}</pre>
+    </div>
+  );
+}
+
+function ManifestMissingPanel({ error }: { error: string }) {
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-200">
+      <div className="mb-1 font-medium">无法加载本次实验的产物</div>
+      <p className="leading-6">
+        登记表里仍有这条记录，但产物文件已丢失（可能被手工清理或部分删除）。
+        请尝试在列表页删除这条记录后重跑实验。
+      </p>
+      <pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs leading-5">{error}</pre>
     </div>
   );
 }
