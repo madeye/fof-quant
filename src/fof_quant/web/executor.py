@@ -7,6 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from fof_quant.data.broad_index import ensure_broad_index_cache_fresh
 from fof_quant.web.registry import RunRegistry
 from fof_quant.web.schemas import BroadIndexBacktestParams, BroadIndexSignalParams
 
@@ -28,10 +29,12 @@ def execute_broad_index_backtest(
     """
     registry.update_status(run_id, "running")
     try:
+        end_date = _parse_iso_date(params.end_date)
+        ensure_broad_index_cache_fresh(cache_dir, end_date=end_date)
+
         from fof_quant.pipeline_broad_index import run_broad_index_backtest_pipeline
 
         start_date = _parse_iso_date(params.start_date)
-        end_date = _parse_iso_date(params.end_date)
         backtest, manifest_path, report, _narrative = run_broad_index_backtest_pipeline(
             cache_dir=cache_dir,
             output_dir=output_dir,
@@ -81,6 +84,8 @@ def execute_broad_index_signal(
     """Run a broad-index signal in-process and update the registry."""
     registry.update_status(run_id, "running")
     try:
+        ensure_broad_index_cache_fresh(cache_dir)
+
         from fof_quant.pipeline_broad_index import run_broad_index_pipeline
 
         holdings_path: Path | None = None

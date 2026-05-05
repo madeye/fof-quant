@@ -4,15 +4,18 @@ import re
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fof_quant.data.cache import CacheMetadata, CacheStore
+from fof_quant.data.cache import CacheMetadata, CacheStore, is_cache_stale
 from fof_quant.data.datasets import dataset_spec
 from fof_quant.data.normalization import normalize_rows
 from fof_quant.data.provider import DataRequest, DataTable
 from fof_quant.env import tushare_token
+
+BROAD_INDEX_DATASETS: tuple[str, ...] = ("etf_basic", "fund_nav", "etf_daily", "benchmarks")
+DEFAULT_BROAD_INDEX_START: date = date(2018, 1, 1)
 
 
 @dataclass(frozen=True)
@@ -109,6 +112,46 @@ def fetch_broad_index(
         etf_daily=etf_daily,
         benchmarks=benchmarks,
     )
+
+
+def ensure_broad_index_cache_fresh(
+    cache_dir: Path,
+    *,
+    max_age: timedelta = timedelta(days=1),
+    default_start: date = DEFAULT_BROAD_INDEX_START,
+    end_date: date | None = None,
+    specs: tuple[IndexSpec, ...] = BROAD_INDEX_SPECS,
+    now: datetime | None = None,
+) -> bool:
+    """Refresh the broad-index cache when stale; return True if a fetch ran.
+
+    Stale = any of BROAD_INDEX_DATASETS is missing or its `fetched_at` is older
+    than `max_age`. Fetch range is `(existing_start_or_default, end_date_or_today)`.
+    Raises `ValueError` when TUSHARE_TOKEN is unset (caller should fail the run).
+    """
+    store = CacheStore(cache_dir)
+    if not is_cache_stale(store, BROAD_INDEX_DATASETS, max_age=max_age, now=now):
+        return False
+    start = _existing_cache_start(store) or default_start
+    end = end_date or datetime.now(tz=UTC).date()
+    if end < start:
+        end = start
+    fetch_broad_index(cache_dir=cache_dir, start_date=start, end_date=end, specs=specs)
+    return True
+
+
+def _existing_cache_start(store: CacheStore) -> date | None:
+    for dataset in BROAD_INDEX_DATASETS:
+        if not store.exists(dataset):
+            continue
+        try:
+            metadata = store.read_metadata(dataset)
+        except (OSError, ValueError):
+            continue
+        start = metadata.request.start_date
+        if start is not None:
+            return start
+    return None
 
 
 def load_broad_index(
