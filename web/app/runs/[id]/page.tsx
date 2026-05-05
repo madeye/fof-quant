@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { getManifest, getRun, listLinkedSignals, reportUrl } from "@/lib/api";
 import NavChart from "@/components/NavChart";
 import DrawdownChart from "@/components/DrawdownChart";
@@ -24,7 +25,14 @@ export default async function RunPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const run = await getRun(id);
+  let run: RunDetail;
+  try {
+    run = await getRun(id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.startsWith("404 ")) notFound();
+    throw err;
+  }
   const inProgress = run.status === "queued" || run.status === "running";
   const failed = run.status === "failed";
 
