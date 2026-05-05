@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { createSignalRun, getRun, listRuns } from "@/lib/api";
-import type { CurrentHoldings, RunSummary } from "@/lib/types";
+import { createSignalRun, getManifest, getRun, listRuns } from "@/lib/api";
+import type { CurrentHoldings, RunSummary, SignalManifest } from "@/lib/types";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const HOLDINGS_PLACEHOLDER = JSON.stringify(
@@ -150,7 +150,7 @@ export default function SignalForm() {
     // bound to the original backtest.
     setPickedBacktestId("");
     try {
-      const detail = await getRun(runId);
+      const [detail, manifest] = await Promise.all([getRun(runId), getManifest(runId)]);
       if (!detail.config_yaml) {
         setPickError("该信号没有保存原始配置（可能由 CLI 触发）。");
         return;
@@ -161,6 +161,13 @@ export default function SignalForm() {
       // none (one-off), leave inherited null.
       setInheritedStrategyId(detail.strategy_id ?? null);
       if (!label) setLabel(`基于 ${detail.label}`);
+      // Inherit the previous signal's post-rebalance holdings as the new
+      // signal's "current" holdings. Only prefill when the user hasn't
+      // already typed something so we don't clobber edits.
+      const inherited = holdingsFromSignalManifest(manifest);
+      if (inherited && !holdingsText.trim()) {
+        setHoldingsText(JSON.stringify(inherited, null, 2));
+      }
     } catch (err) {
       setPickError(err instanceof Error ? err.message : String(err));
     }
@@ -432,6 +439,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   );
+}
+
+// Derives the post-rebalance holdings of a previous signal from its manifest.
+// Uses target_notional_cny / last_price rounded to lot-100 (matching the
+// engine's lot size); cash is the residual after share rounding.
+function holdingsFromSignalManifest(manifest: unknown): CurrentHoldings | null {
+  const m = manifest as Partial<SignalManifest>;
+  if (
+    !m ||
+    typeof m.total_aum_cny !== "number" ||
+    !Array.isArray(m.rebalance_lines)
+  ) {
+    return null;
+  }
+  const positions: Array<{ ts_code: string; shares: number }> = [];
+  let invested = 0;
+  for (const line of m.rebalance_lines) {
+    if (!line.last_price || line.last_price <= 0) continue;
+    const rawShares = line.target_notional_cny / line.last_price;
+    const shares = Math.round(rawShares / 100) * 100;
+    if (shares <= 0) continue;
+    positions.push({ ts_code: line.ts_code, shares });
+    invested += shares * line.last_price;
+  }
+  if (positions.length === 0) return null;
+  const cash = Math.max(0, Math.round(m.total_aum_cny - invested));
+  return { as_of: TODAY, cash_cny: cash, positions };
 }
 
 // Strict-mode-safe effect that runs exactly once on mount.
