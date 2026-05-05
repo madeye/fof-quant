@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -62,3 +63,29 @@ class CacheStore:
     @staticmethod
     def _read_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8"))
+
+
+def is_cache_stale(
+    store: CacheStore,
+    datasets: Iterable[str],
+    *,
+    max_age: timedelta = timedelta(days=1),
+    now: datetime | None = None,
+) -> bool:
+    """Return True when any required dataset is missing or older than max_age.
+
+    `fetched_at` is compared in UTC; `now` defaults to current UTC time.
+    """
+    current = now or datetime.now(tz=UTC)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=UTC)
+    threshold = current - max_age
+    for dataset in datasets:
+        if not store.exists(dataset):
+            return True
+        fetched = store.read_metadata(dataset).fetched_at
+        if fetched.tzinfo is None:
+            fetched = fetched.replace(tzinfo=UTC)
+        if fetched < threshold:
+            return True
+    return False
