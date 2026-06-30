@@ -66,6 +66,18 @@ class BroadIndexFetchResult:
     benchmarks: DataTable  # rows: ts_code (TR or price), trade_date, close
 
 
+# Tushare's fund_basic.benchmark now carries a trailing weight, e.g.
+# "沪深300指数收益率×100%". A pure single-index tracker is always ×100%; composite
+# benchmarks split into parts that are each <100% ("...×80%+中债...×20%"), so
+# stripping only a trailing ×100% relaxes the match for trackers without letting
+# multi-index funds through.
+_FULL_WEIGHT_SUFFIX = re.compile(r"\s*[×xX*]\s*100(?:\.0+)?%\s*$")
+
+
+def _strip_full_weight(benchmark: str) -> str:
+    return _FULL_WEIGHT_SUFFIX.sub("", benchmark.strip())
+
+
 def filter_etfs_for_spec(rows: list[dict[str, Any]], spec: IndexSpec) -> list[dict[str, Any]]:
     pattern = re.compile(spec.benchmark_pattern)
     out: list[dict[str, Any]] = []
@@ -76,7 +88,7 @@ def filter_etfs_for_spec(rows: list[dict[str, Any]], spec: IndexSpec) -> list[di
             continue
         if "ETF" not in (row.get("name") or ""):
             continue
-        if not pattern.match((row.get("benchmark") or "").strip()):
+        if not pattern.match(_strip_full_weight(row.get("benchmark") or "")):
             continue
         out.append({**row, "_sleeve": spec.label})
     return out
@@ -185,6 +197,15 @@ def _fetch_universe(
         # we resolve "best" later via liquidity once daily data is loaded.
         candidates.sort(key=lambda r: str(r.get("list_date") or "99999999"))
         selected.extend(candidates[:max_per_sleeve])
+    if not selected:
+        # fund_basic returned rows but none matched any sleeve — almost always an
+        # upstream schema/format change (e.g. the benchmark weight suffix). Fail
+        # loudly instead of writing an empty universe, which would silently clobber
+        # the good cache and make every downstream backtest a flat-curve no-op.
+        raise ValueError(
+            f"broad-index universe is empty after filtering {len(rows)} fund_basic rows; "
+            "refusing to overwrite cache (likely a Tushare fund_basic format change)"
+        )
     table = normalize_rows(dataset_spec("etf_basic"), selected)
     metadata = CacheMetadata(
         dataset=table.dataset,
