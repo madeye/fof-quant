@@ -13,16 +13,29 @@ import type {
 const SERVER_BASE = process.env.FOF_API_BASE ?? "http://127.0.0.1:8000";
 const BASE = typeof window === "undefined" ? SERVER_BASE : "";
 
+// Read the body once as text, then try to parse JSON. Calling .json() and
+// then .text() on the same Response throws "Body is disturbed or locked"
+// because the underlying stream is already consumed — surface the real
+// error instead.
+async function readErrorDetail(response: Response): Promise<string> {
+  const raw = await response.text();
+  if (!raw) return "";
+  try {
+    const body = JSON.parse(raw);
+    if (body && typeof body === "object" && "detail" in body) {
+      const d = (body as { detail: unknown }).detail;
+      return typeof d === "string" ? d : JSON.stringify(d);
+    }
+    return JSON.stringify(body);
+  } catch {
+    return raw;
+  }
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, { cache: "no-store", ...init });
   if (!response.ok) {
-    let detail = "";
-    try {
-      const body = await response.json();
-      detail = body.detail ?? JSON.stringify(body);
-    } catch {
-      detail = await response.text();
-    }
+    const detail = await readErrorDetail(response);
     throw new Error(`${response.status} ${response.statusText} on ${path}: ${detail}`);
   }
   return (await response.json()) as T;
@@ -65,12 +78,7 @@ export async function deleteRun(
     cache: "no-store",
   });
   if (!response.ok) {
-    let detail = "";
-    try {
-      detail = (await response.json()).detail ?? "";
-    } catch {
-      detail = await response.text();
-    }
+    const detail = await readErrorDetail(response);
     throw new Error(`${response.status} ${response.statusText}: ${detail}`);
   }
 }
